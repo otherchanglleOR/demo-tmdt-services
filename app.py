@@ -874,7 +874,7 @@ def process_vnpay_return_and_ghn():
 
         "service_type_id":
             2
-    }
+    
 
     try:
 
