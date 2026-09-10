@@ -1251,51 +1251,25 @@ with tab1:
 # TAB 2 - Đặt hàng & kiểm soát rủi ro (chọn sản phẩm cố định)
 # ============================================================
 
-# Danh sách sản phẩm cố định
 PRODUCTS = [
-    {
-        "name": "Điện thoại thông minh",
-        "price": 5000000,
-        "risk_score": 20,
-        "risk_level": "LOW"
-    },
-    {
-        "name": "Laptop gaming",
-        "price": 20000000,
-        "risk_score": 50,
-        "risk_level": "MEDIUM"
-    },
-    {
-        "name": "Trang sức vàng",
-        "price": 30000000,
-        "risk_score": 80,
-        "risk_level": "HIGH"
-    }
+    {"name": "Điện thoại thông minh", "price": 5000000, "risk_score": 20, "risk_level": "LOW"},
+    {"name": "Laptop gaming", "price": 20000000, "risk_score": 50, "risk_level": "MEDIUM"},
+    {"name": "Trang sức vàng", "price": 30000000, "risk_score": 80, "risk_level": "HIGH"}
 ]
 
 with tab2:
     st.subheader("🚀 Đặt hàng & kiểm soát rủi ro")
 
-    # --------------------------------------------------------
-    # PRODUCT INFO
-    # --------------------------------------------------------
-    st.markdown("### 📦 Thông tin đơn hàng")
-
     customer_name = st.text_input("Họ tên khách hàng", "Đỗ Trung Kiên")
     customer_phone = st.text_input("Số điện thoại", "0900000000")
     customer_address = st.text_input("Địa chỉ", "39 Nguyen Thi Thap")
 
-    # Chọn sản phẩm từ danh sách cố định
     product_choice = st.selectbox("Chọn sản phẩm", [p["name"] for p in PRODUCTS])
     selected_product = next(p for p in PRODUCTS if p["name"] == product_choice)
 
     st.info(f"💰 Giá trị đơn hàng: **{money(selected_product['price'])}**")
 
-    # --------------------------------------------------------
-    # AUTO SECURITY CHECK
-    # --------------------------------------------------------
     if st.button("🔥 Đặt hàng", type="primary", use_container_width=True):
-
         if not customer_phone:
             st.error("❌ Vui lòng nhập số điện thoại.")
             st.stop()
@@ -1303,7 +1277,6 @@ with tab2:
         order_id = generate_order_id()
         st.markdown(f"## 🆔 Order ID: `{order_id}`")
 
-        # Lấy risk_score và risk_level từ sản phẩm
         risk_score = selected_product["risk_score"]
         risk_level = selected_product["risk_level"]
 
@@ -1328,7 +1301,6 @@ with tab2:
             st.success(f"🟢 LOW RISK — {risk_score}/100")
             status = "APPROVED"
 
-        # SAVE ORDER
         order_data = {
             "created_at": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
             "customer_name": customer_name,
@@ -1344,12 +1316,12 @@ with tab2:
         st.session_state.orders[order_id] = order_data
         st.success("✅ Đã lưu thông tin đơn hàng.")
 
-        # PAYMENT
         if status in ["APPROVED", "OTP_VERIFIED"]:
             st.divider()
             st.markdown("### 💳 VNPay Sandbox")
 
-            return_url = "https://" + st.context.headers.get("Host", "")
+            # return_url có chứa order_id và status=paid
+            return_url = f"https://{st.context.headers.get('Host', '')}?order_id={order_id}&status=paid"
             try:
                 payment_url = build_vnpay_url(order_id, selected_product["price"], f"Thanh toan don hang {order_id}", return_url)
                 st.success("✅ Đã tạo URL thanh toán VNPay.")
@@ -1358,11 +1330,21 @@ with tab2:
                 st.error(f"❌ Không tạo được VNPay URL: {e}")
 
 # ============================================================
-# TAB 3 - Lịch sử đơn hàng
+# TAB 3 - Lịch sử đơn hàng (cập nhật sau thanh toán)
 # ============================================================
 
 with tab3:
     st.subheader("📋 Lịch sử đơn hàng")
+
+    # Đọc query params để biết có thanh toán hay không
+    query_params = st.experimental_get_query_params()
+    order_id = query_params.get("order_id", [None])[0]
+    status = query_params.get("status", [None])[0]
+
+    if order_id and status == "paid":
+        if order_id in st.session_state.orders:
+            st.session_state.orders[order_id]["status"] = "PAID"
+            st.success(f"💳 Thanh toán VNPay thành công cho đơn {order_id}")
 
     if not st.session_state.orders:
         st.info("Chưa có đơn hàng nào.")
@@ -1376,5 +1358,3 @@ with tab3:
                 st.write(f"💰 Giá trị: {money(order.get('amount', 0))}")
                 st.write(f"📊 Risk Score: {order.get('risk_score', 0)} ({order.get('risk_level', 'N/A')})")
                 st.write(f"📌 Trạng thái: {order.get('status', 'N/A')}")
-                if order.get("ghn_order_code"):
-                    st.write(f"🚚 Mã vận đơn GHN: {order['ghn_order_code']}")
