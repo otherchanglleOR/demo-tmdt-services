@@ -34,7 +34,7 @@ with tab1:
                     client = genai.Client(api_key=GEMINI_API_KEY)
                     # Sử dụng gemini-1.5-flash-8b giúp tối ưu hóa quota hạn ngạch tối đa
                     response = client.models.generate_content(
-                        model='gemini-1.5-flash-8b',
+                        model='gemini-flash-8b',
                         contents=f"Bạn là AI tư vấn bán hàng TMĐT. Trả lời ngắn gọn dưới 3 câu, thân thiện: {user_query}"
                     )
                     st.info(f"**Phản hồi từ Google Gemini AI:**\n\n{response.text}")
