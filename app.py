@@ -540,6 +540,16 @@ def calculate_risk(
 # 11. VNPAY
 # ============================================================
 
+from datetime import datetime
+import pytz
+
+# Lấy thời gian chuẩn Việt Nam (GMT+7)
+tz = pytz.timezone('Asia/Ho_Chi_Minh')
+now = datetime.now(tz)
+
+vnp_CreateDate = now.strftime('%Y%m%d%H%M%S')
+# vnp_ExpireDate nên cộng thêm 15 phút
+vnp_ExpireDate = (now + timedelta(minutes=15)).strftime('%Y%m%d%H%M%S')
 def sort_dict(data):
 
     return dict(
