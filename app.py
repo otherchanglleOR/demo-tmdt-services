@@ -545,6 +545,8 @@ import hmac
 import urllib.parse
 from datetime import datetime, timedelta
 import pytz
+import requests
+import streamlit as st
 
 
 def sort_dict(data):
@@ -560,14 +562,12 @@ def build_vnpay_url(
     if not VNP_HASH_SECRET:
         raise Exception("Thiếu VNP_HASH_SECRET")
 
-    # 1. Lấy thời gian chuẩn Việt Nam (GMT+7)
     tz = pytz.timezone("Asia/Ho_Chi_Minh")
     now = datetime.now(tz)
 
     create_date = now.strftime("%Y%m%d%H%M%S")
     expire_date = (now + timedelta(minutes=15)).strftime("%Y%m%d%H%M%S")
 
-    # 2. Chuẩn bị các tham số VNPay
     params = {
         "vnp_Version": "2.1.0",
         "vnp_Command": "pay",
@@ -584,34 +584,29 @@ def build_vnpay_url(
         "vnp_ExpireDate": expire_date,
     }
 
-    # 3. Sắp xếp danh sách tham số theo alphabet A-Z
     params = sort_dict(params)
 
-    # 4. Tạo chuỗi query string (Sử dụng quote_plus chuẩn VNPay)
     query_string = urllib.parse.urlencode(
         params, quote_via=urllib.parse.quote_plus
     )
 
-    # 5. Tạo chữ ký mã hóa HMAC-SHA512
     secure_hash = hmac.new(
         VNP_HASH_SECRET.encode("utf-8"),
         query_string.encode("utf-8"),
         hashlib.sha512,
     ).hexdigest()
 
-    # 6. Ghép thành URL thanh toán hoàn chỉnh
     payment_url = f"{VNP_URL}?{query_string}&vnp_SecureHash={secure_hash}"
 
     return payment_url
 
 
 # ============================================================
-# 12. VNPAY VERIFY RETURN (ĐÃ SỬA LỖI)
+# 12. VNPAY VERIFY RETURN
 # ============================================================
 
 
 def verify_vnpay_response(query_params):
-    # Chuyển đổi query_params về dict tiêu chuẩn
     if hasattr(query_params, "to_dict"):
         query_params = query_params.to_dict()
     else:
@@ -621,45 +616,41 @@ def verify_vnpay_response(query_params):
 
     for key, value in query_params.items():
         if key.startswith("vnp_"):
-            # LỖI THƯỜNG GẶP: Nếu value là list (Streamlit/Flask), lấy phần tử đầu tiên
             if isinstance(value, list):
                 value = value[0] if len(value) > 0 else ""
 
-            # Chỉ giữ các tham số có giá trị
             if value is not None and str(value) != "":
                 data[key] = str(value)
 
-    # Tách các hash ra khỏi dict dữ liệu
     received_hash = data.pop("vnp_SecureHash", "")
     data.pop("vnp_SecureHashType", None)
 
-    # Sắp xếp theo alphabet
     data = sort_dict(data)
 
-    # Tạo query string mã hóa khớp với VNPay
     query_string = urllib.parse.urlencode(
         data, quote_via=urllib.parse.quote_plus
     )
 
-    # Tính lại chữ ký
     calculated_hash = hmac.new(
         VNP_HASH_SECRET.encode("utf-8"),
         query_string.encode("utf-8"),
         hashlib.sha512,
     ).hexdigest()
 
-    # So sánh không phân biệt hoa thường
     valid = hmac.compare_digest(
         calculated_hash.lower(), str(received_hash).lower()
     )
 
     return valid, data
 
+
 # ============================================================
-# 13. GHN CREATE ORDER
+# 13. GHN CREATE ORDER (ĐÃ SỬA LỖI COD & ORDER CODE)
 # ============================================================
 
+
 def create_ghn_order(
+    client_order_code,  # Khóa chính để đồng bộ với VNPay (order_id)
     customer_name,
     customer_phone,
     customer_address,
@@ -668,41 +659,152 @@ def create_ghn_order(
     province_name,
     product_name,
     amount,
-    weight
+    weight,
+    is_paid=True,  # Đánh dấu đơn hàng đã thanh toán VNPay hay chưa
 ):
-
     if not GHN_TOKEN:
-        return {
-            "success": False,
-            "message": "Thiếu GHN_TOKEN"
-        }
+        return {"success": False, "message": "Thiếu GHN_TOKEN"}
 
     if not GHN_SHOP_ID:
-        return {
-            "success": False,
-            "message": "Thiếu GHN_SHOP_ID"
-        }
+        return {"success": False, "message": "Thiếu GHN_SHOP_ID"}
 
-    endpoint = (
-        "https://dev-online-gateway.ghn.vn/"
-        "shiip/public-api/v2/shipping-order/create"
-    )
+    endpoint = "https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/create"
 
     headers = {
         "Content-Type": "application/json",
         "Token": GHN_TOKEN,
-        "ShopId": str(GHN_SHOP_ID)
+        "ShopId": str(GHN_SHOP_ID),
     }
 
+    # Đã thanh toán VNPay thì COD = 0, ngược lại thì thu COD
+    cod_amount = 0 if is_paid else int(amount)
+
     payload = {
-        "payment_type_id": 2,
-
-        "note": "Don hang E-Commerce Demo",
-
+        "payment_type_id": 1,  # 1: Bên gửi trả phí dịch vụ vận chuyển
+        "note": f"Đơn hàng VNPay #{client_order_code}",
         "required_note": "KHONGCHOXEMHANG",
+        "client_order_code": str(client_order_code),
+        # THÔNG TIN SHOP
+        "from_name": "E-Commerce Shop",
+        "from_phone": "0900000000",
+        "from_address": "39 Nguyen Thi Thap",
+        "from_ward_name": "Phuong Tan Phu",
+        "from_district_name": "Quan 7",
+        "from_province_name": "Ho Chi Minh",
+        # THÔNG TIN KHÁCH HÀNG
+        "to_name": customer_name,
+        "to_phone": customer_phone,
+        "to_address": customer_address,
+        "to_ward_name": ward_name,
+        "to_district_name": district_name,
+        "to_province_name": province_name,
+        # THÔNG TIN HÀNG HÓA
+        "cod_amount": cod_amount,
+        "content": product_name,
+        "weight": int(weight),
+        "length": 20,
+        "width": 15,
+        "height": 10,
+        "service_type_id": 2,
+    }
 
-        "client_order_code":
-            generate_order_id(),
+    try:
+        response = requests.post(
+            endpoint, headers=headers, json=payload, timeout=30
+        )
+        data = response.json()
+
+        if response.status_code == 200 and data.get("code") == 200:
+            result = data.get("data", {})
+            return {
+                "success": True,
+                "order_code": result.get("order_code"),
+                "total_fee": result.get("total_fee"),
+                "expected_delivery_time": result.get("expected_delivery_time"),
+                "message": data.get("message", "Success"),
+            }
+
+        return {
+            "success": False,
+            "message": data.get("message", response.text),
+        }
+
+    except Exception as e:
+        return {"success": False, "message": f"Lỗi GHN: {str(e)}"}
+
+
+# ============================================================
+# 14. LOGIC TỰ ĐỘNG HỨNG VNPAY & TẠO ĐƠN GHN TRÊN STREAMLIT
+# ============================================================
+
+
+def process_vnpay_return_and_ghn():
+    query_params = dict(st.query_params)
+
+    # Khi VNPay trả kết quả về URL
+    if "vnp_ResponseCode" in query_params:
+        is_valid, vnp_data = verify_vnpay_response(query_params)
+
+        if is_valid:
+            response_code = vnp_data.get("vnp_ResponseCode")
+            order_id = vnp_data.get("vnp_TxnRef")
+
+            if response_code == "00":
+                st.success(
+                    f"🎉 Thanh toán VNPay thành công cho đơn hàng `{order_id}`!"
+                )
+
+                # Lấy dữ liệu đơn hàng đã lưu trong session trước khi đi thanh toán
+                pending_order = st.session_state.get(f"pending_order_{order_id}")
+
+                if pending_order:
+                    if not pending_order.get("ghn_created"):
+                        with st.spinner("Đang tự động đẩy đơn sang GHN..."):
+                            ghn_res = create_ghn_order(
+                                client_order_code=order_id,
+                                customer_name=pending_order["customer_name"],
+                                customer_phone=pending_order["customer_phone"],
+                                customer_address=pending_order[
+                                    "customer_address"
+                                ],
+                                ward_name=pending_order["ward_name"],
+                                district_name=pending_order["district_name"],
+                                province_name=pending_order["province_name"],
+                                product_name=pending_order["product_name"],
+                                amount=pending_order["amount"],
+                                weight=pending_order["weight"],
+                                is_paid=True,  # Đơn đã thanh toán thành công
+                            )
+
+                            if ghn_res["success"]:
+                                st.session_state[f"pending_order_{order_id}"][
+                                    "ghn_created"
+                                ] = True
+                                st.session_state[f"pending_order_{order_id}"][
+                                    "ghn_order_code"
+                                ] = ghn_res["order_code"]
+                                st.balloons()
+                                st.success(
+                                    f"✅ Đã tạo đơn GHN thành công! Mã vận đơn GHN: **{ghn_res['order_code']}**"
+                                )
+                            else:
+                                st.error(
+                                    f"❌ Lỗi tạo đơn GHN: {ghn_res['message']}"
+                                )
+                    else:
+                        st.info(
+                            f"Đơn hàng đã được tạo GHN trước đó. Mã vận đơn: **{pending_order.get('ghn_order_code')}**"
+                        )
+                else:
+                    st.warning(
+                        "Không tìm thấy thông tin chi tiết đơn hàng tạm trong Session."
+                    )
+            else:
+                st.error(
+                    f"Thanh toán không thành công. Mã lỗi VNPay: {response_code}"
+                )
+        else:
+            st.error("Chữ ký VNPay không hợp lệ!")
 
         # ==============================================
         # THÔNG TIN SHOP
