@@ -1420,7 +1420,7 @@ with tab3:
 
                 st.write(
                     "👤 Khách hàng:",
-                    order["customer"]
+                    order["customer_name"]
                 )
 
                 st.write(
