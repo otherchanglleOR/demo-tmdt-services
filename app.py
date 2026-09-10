@@ -21,7 +21,7 @@ st.sidebar.success("5. Shipping/Notify: GHN API & Zalo ZNS (Sandbox)")
 tab1, tab2 = st.tabs(["🤖 1. AI Tư Vấn Khách Hàng", "📦 2. Workflow Tự Động Hóa Đặt Hàng"])
 
 # ---------------------------------------------------------
-# TAB 1: AI SERVICE (GOOGLE GEMINI 2.5 FLASH LITE - SIÊU NHẸ)
+# TAB 1: AI SERVICE (GOOGLE GEMINI 3.5 FLASH LITE)
 # ---------------------------------------------------------
 with tab1:
     st.subheader("Trải nghiệm AI Service tư vấn bán hàng")
@@ -32,7 +32,7 @@ with tab1:
             with st.spinner("Google AI đang xử lý..."):
                 try:
                     client = genai.Client(api_key=GEMINI_API_KEY)
-                    # Dùng gemini-2.5-flash-lite theo đúng bảng Quota trong tài khoản của bạn
+                    # Dùng gemini-3.5-flash-lite 
                     response = client.models.generate_content(
                         model='gemini-3.5-flash-lite',
                         contents=f"Bạn là AI tư vấn bán hàng TMĐT. Trả lời ngắn gọn dưới 3 câu, thân thiện: {user_query}"
