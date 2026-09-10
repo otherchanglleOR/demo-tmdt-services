@@ -806,130 +806,129 @@ def process_vnpay_return_and_ghn():
         else:
             st.error("Chữ ký VNPay không hợp lệ!")
 
-        # ==============================================
-        # THÔNG TIN SHOP
-        # ==============================================
-{
-        "from_name":"E-Commerce Demo",
+        ```python
+# ==============================================
+# THÔNG TIN SHOP + KHÁCH HÀNG + HÀNG HÓA
+# ==============================================
 
-        "from_phone":"0900000000",
+payload = {
+    # ==============================================
+    # THÔNG TIN SHOP
+    # ==============================================
 
-        "from_address":"39 Nguyen Thi Thap",
+    "from_name": "E-Commerce Demo",
+    "from_phone": "0900000000",
+    "from_address": "39 Nguyen Thi Thap",
+    "from_ward_name": "Phuong Tan Phu",
+    "from_district_name": "Quan 7",
+    "from_province_name": "Ho Chi Minh",
 
-        "from_ward_name":
-            "Phuong Tan Phu",
+    # ==============================================
+    # KHÁCH HÀNG
+    # ==============================================
 
-        "from_district_name":
-            "Quan 7",
+    "to_name": customer_name,
+    "to_phone": customer_phone,
+    "to_address": customer_address,
+    "to_ward_name": ward_name,
+    "to_district_name": district_name,
+    "to_province_name": province_name,
 
-        "from_province_name":
-            "Ho Chi Minh",
+    # ==============================================
+    # HÀNG HÓA
+    # ==============================================
 
-        # ==============================================
-        # KHÁCH HÀNG
-        # ==============================================
+    "cod_amount": int(amount),
+    "content": product_name,
+    "weight": int(weight),
 
-        "to_name":
-            customer_name,
+    "length": 20,
+    "width": 15,
+    "height": 10,
 
-        "to_phone":
-            customer_phone,
+    # ==============================================
+    # DỊCH VỤ
+    # ==============================================
 
-        "to_address":
-            customer_address,
+    "service_type_id": 2
+}
 
-        "to_ward_name":
-            ward_name,
 
-        "to_district_name":
-            district_name,
+# ==============================================
+# GỌI API GHN
+# ==============================================
 
-        "to_province_name":
-            province_name,
+try:
 
-        # ==============================================
-        # HÀNG HÓA
-        # ==============================================
+    response = requests.post(
+        endpoint,
+        headers=headers,
+        json=payload,
+        timeout=30
+    )
 
-        "cod_amount":
-            int(amount),
+    data = response.json()
 
-        "content":
-            product_name,
+    # ==========================================
+    # KIỂM TRA RESPONSE
+    # ==========================================
 
-        "weight":
-            int(weight),
+    if response.status_code == 200:
 
-        "length":
-            20,
+        if data.get("code") == 200:
 
-        "width":
-            15,
+            result = data.get("data", {})
 
-        "height":
-            10,
+            return {
+                "success": True,
 
-        "service_type_id":
-            2
-    
+                "order_code":
+                    result.get("order_code"),
 
-    try:
+                "total_fee":
+                    result.get("total_fee"),
 
-        response = requests.post(
-            endpoint,
-            headers=headers,
-            json=payload,
-            timeout=30
-        )
+                "expected_delivery_time":
+                    result.get(
+                        "expected_delivery_time"
+                    ),
 
-        data = response.json()
+                "message":
+                    data.get(
+                        "message",
+                        "Success"
+                    )
+            }
 
-        if response.status_code == 200:
+    # ==========================================
+    # API TRẢ VỀ LỖI
+    # ==========================================
 
-            if data.get("code") == 200:
+    return {
+        "success": False,
 
-                result = data.get(
-                    "data",
-                    {}
-                )
+        "message":
+            data.get(
+                "message",
+                response.text
+            )
+    }
 
-                return {
-                    "success": True,
-                    "order_code":
-                        result.get(
-                            "order_code"
-                        ),
-                    "total_fee":
-                        result.get(
-                            "total_fee"
-                        ),
-                    "expected_delivery_time":
-                        result.get(
-                            "expected_delivery_time"
-                        ),
-                    "message":
-                        data.get(
-                            "message",
-                            "Success"
-                        )
-                }
 
-        return {
-            "success": False,
-            "message":
-                data.get(
-                    "message",
-                    response.text
-                )
-        }
+# ==============================================
+# XỬ LÝ EXCEPTION
+# ==============================================
 
-    except Exception as e:
+except Exception as e:
 
-        return {
-            "success": False,
-            "message":
-                f"Lỗi GHN: {str(e)}"
-        }
+    return {
+        "success": False,
+
+        "message":
+            f"Lỗi GHN: {str(e)}"
+    }
+```
+
 
 
 # ============================================================
