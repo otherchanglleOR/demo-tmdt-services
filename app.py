@@ -1,186 +1,1551 @@
 import streamlit as st
+import requests
+import hashlib
+import hmac
+import urllib.parse
 import time
-import os
+import uuid
+from datetime import datetime, timedelta
 from google import genai
 
-# Cấu hình trang Web
+
+# ============================================================
+# 1. PAGE CONFIG
+# ============================================================
+
 st.set_page_config(
-    page_title="E-Commerce Internet Services - Interactive Flow",
+    page_title="E-Commerce Internet Services",
     page_icon="🛍️",
     layout="wide"
 )
 
-# Tiêu đề ứng dụng
-st.title("🛍️ Sàn Thương Mại Điện Tử - Demo Tích Hợp Internet Services")
-st.caption("Quy trình tự động hóa tích hợp AI, Kiểm tra An ninh 3 Lớp, Phân loại Risk Score, Thanh toán & Vận chuyển")
 
-# Lấy các API Keys từ Streamlit Secrets
+# ============================================================
+# 2. SECRETS
+# ============================================================
+
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
-# Khởi tạo các Tab theo đúng Quy trình
-tab1, tab2 = st.tabs([
-    "💬 1. Tư Vấn Khách Hàng (Gemini AI)", 
-    "🚀 2. Quy Trình Đặt Hàng & Kiểm Soát Rủi Ro (Full Workflow)"
-])
+SAFE_BROWSING_API_KEY = st.secrets.get(
+    "SAFE_BROWSING_API_KEY", ""
+)
 
-# ==========================================
-# BƯỚC 1 & 2: KHÁCH HÀNG & TƯ VẤN KHÁCH HÀNG (GEMINI AI)
-# ==========================================
+ABUSEIPDB_API_KEY = st.secrets.get(
+    "ABUSEIPDB_API_KEY", ""
+)
+
+VIRUSTOTAL_API_KEY = st.secrets.get(
+    "VIRUSTOTAL_API_KEY", ""
+)
+
+VNP_TMN_CODE = st.secrets.get(
+    "VNP_TMN_CODE", ""
+)
+
+VNP_HASH_SECRET = st.secrets.get(
+    "VNP_HASH_SECRET", ""
+)
+
+VNP_URL = st.secrets.get(
+    "VNP_URL",
+    "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
+)
+
+GHN_TOKEN = st.secrets.get(
+    "GHN_TOKEN", ""
+)
+
+GHN_SHOP_ID = st.secrets.get(
+    "GHN_SHOP_ID", ""
+)
+
+
+# ============================================================
+# 3. SESSION STATE
+# ============================================================
+
+if "chat_messages" not in st.session_state:
+    st.session_state.chat_messages = [
+        {
+            "role": "assistant",
+            "content":
+            "Xin chào! Tôi là trợ lý AI của cửa hàng. "
+            "Bạn muốn tìm sản phẩm nào?"
+        }
+    ]
+
+
+if "orders" not in st.session_state:
+    st.session_state.orders = {}
+
+
+# ============================================================
+# 4. CSS
+# ============================================================
+
+st.markdown("""
+<style>
+
+.main-title {
+    text-align: center;
+    font-size: 38px;
+    font-weight: bold;
+}
+
+.subtitle {
+    text-align: center;
+    color: gray;
+    margin-bottom: 25px;
+}
+
+.box {
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    margin-bottom: 15px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# ============================================================
+# 5. UTILITY
+# ============================================================
+
+def money(value):
+    return f"{value:,.0f}".replace(",", ".") + " VNĐ"
+
+
+def generate_order_id():
+    return (
+        "ORD"
+        + datetime.now().strftime("%Y%m%d%H%M%S")
+        + uuid.uuid4().hex[:4].upper()
+    )
+
+
+def normalize_ip(ip):
+    return ip.strip()
+
+
+# ============================================================
+# 6. GEMINI
+# ============================================================
+
+def gemini_chat(question):
+
+    if not GEMINI_API_KEY:
+        return "❌ Chưa cấu hình GEMINI_API_KEY."
+
+    try:
+
+        client = genai.Client(
+            api_key=GEMINI_API_KEY
+        )
+
+        history = ""
+
+        for message in st.session_state.chat_messages[-8:]:
+            history += (
+                f"{message['role']}: "
+                f"{message['content']}\n"
+            )
+
+        prompt = f"""
+Bạn là trợ lý bán hàng của một sàn thương mại điện tử.
+
+Hãy:
+- Tư vấn sản phẩm.
+- So sánh sản phẩm.
+- Giải thích ưu nhược điểm.
+- Trả lời bằng tiếng Việt.
+- Ngắn gọn, dễ hiểu.
+- Không tự bịa giá sản phẩm.
+
+Lịch sử:
+{history}
+
+Câu hỏi:
+{question}
+"""
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+
+        return response.text
+
+    except Exception as e:
+        return f"❌ Gemini API lỗi: {str(e)}"
+
+
+# ============================================================
+# 7. GOOGLE SAFE BROWSING
+# ============================================================
+
+def check_safe_browsing(url):
+
+    if not SAFE_BROWSING_API_KEY:
+        return {
+            "success": False,
+            "safe": None,
+            "message": "Chưa cấu hình Safe Browsing API Key"
+        }
+
+    endpoint = (
+        "https://safebrowsing.googleapis.com/"
+        "v4/threatMatches:find"
+    )
+
+    params = {
+        "key": SAFE_BROWSING_API_KEY
+    }
+
+    payload = {
+        "client": {
+            "clientId": "ecommerce-demo",
+            "clientVersion": "1.0"
+        },
+        "threatInfo": {
+            "threatTypes": [
+                "MALWARE",
+                "SOCIAL_ENGINEERING",
+                "UNWANTED_SOFTWARE",
+                "POTENTIALLY_HARMFUL_APPLICATION"
+            ],
+            "platformTypes": [
+                "ANY_PLATFORM"
+            ],
+            "threatEntryTypes": [
+                "URL"
+            ],
+            "threatEntries": [
+                {
+                    "url": url
+                }
+            ]
+        }
+    }
+
+    try:
+
+        response = requests.post(
+            endpoint,
+            params=params,
+            json=payload,
+            timeout=15
+        )
+
+        if response.status_code != 200:
+            return {
+                "success": False,
+                "safe": None,
+                "message":
+                    f"HTTP {response.status_code}: "
+                    f"{response.text[:300]}"
+            }
+
+        data = response.json()
+
+        matches = data.get("matches", [])
+
+        if matches:
+
+            return {
+                "success": True,
+                "safe": False,
+                "score": 40,
+                "message":
+                    f"⚠️ Phát hiện {len(matches)} mối đe dọa"
+            }
+
+        return {
+            "success": True,
+            "safe": True,
+            "score": 0,
+            "message": "✅ URL an toàn"
+        }
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "safe": None,
+            "message": f"Lỗi Safe Browsing: {str(e)}"
+        }
+
+
+# ============================================================
+# 8. ABUSEIPDB
+# ============================================================
+
+def check_abuse_ip(ip):
+
+    if not ABUSEIPDB_API_KEY:
+        return {
+            "success": False,
+            "score": 0,
+            "confidence": None,
+            "message": "Chưa cấu hình AbuseIPDB API Key"
+        }
+
+    endpoint = (
+        "https://api.abuseipdb.com/api/v2/check"
+    )
+
+    headers = {
+        "Key": ABUSEIPDB_API_KEY,
+        "Accept": "application/json"
+    }
+
+    params = {
+        "ipAddress": normalize_ip(ip),
+        "maxAgeInDays": 90
+    }
+
+    try:
+
+        response = requests.get(
+            endpoint,
+            headers=headers,
+            params=params,
+            timeout=15
+        )
+
+        if response.status_code != 200:
+
+            return {
+                "success": False,
+                "score": 0,
+                "confidence": None,
+                "message":
+                    f"HTTP {response.status_code}: "
+                    f"{response.text[:300]}"
+            }
+
+        data = response.json().get(
+            "data",
+            {}
+        )
+
+        confidence = int(
+            data.get(
+                "abuseConfidenceScore",
+                0
+            )
+        )
+
+        # Chuyển 0-100 thành tối đa 30 điểm
+        risk_score = round(
+            confidence * 0.30
+        )
+
+        return {
+            "success": True,
+            "score": risk_score,
+            "confidence": confidence,
+            "country": data.get("countryCode"),
+            "total_reports":
+                data.get("totalReports", 0),
+            "message":
+                "⚠️ IP có dấu hiệu đáng ngờ"
+                if confidence >= 50
+                else
+                "✅ IP có mức rủi ro thấp"
+        }
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "score": 0,
+            "confidence": None,
+            "message": f"Lỗi AbuseIPDB: {str(e)}"
+        }
+
+
+# ============================================================
+# 9. VIRUSTOTAL URL
+# ============================================================
+
+def check_virustotal_url(url):
+
+    if not VIRUSTOTAL_API_KEY:
+        return {
+            "success": False,
+            "score": 0,
+            "malicious": 0,
+            "suspicious": 0,
+            "message": "Chưa cấu hình VirusTotal API Key"
+        }
+
+    headers = {
+        "x-apikey": VIRUSTOTAL_API_KEY
+    }
+
+    try:
+
+        # Gửi URL
+        response = requests.post(
+            "https://www.virustotal.com/api/v3/urls",
+            headers=headers,
+            data={"url": url},
+            timeout=30
+        )
+
+        if response.status_code not in [200, 201]:
+
+            return {
+                "success": False,
+                "score": 0,
+                "malicious": 0,
+                "suspicious": 0,
+                "message":
+                    f"HTTP {response.status_code}: "
+                    f"{response.text[:300]}"
+            }
+
+        analysis_id = response.json()[
+            "data"
+        ]["id"]
+
+        # Chờ phân tích
+        result = None
+
+        for _ in range(10):
+
+            time.sleep(2)
+
+            analysis_response = requests.get(
+                f"https://www.virustotal.com/api/v3/analyses/{analysis_id}",
+                headers=headers,
+                timeout=30
+            )
+
+            if analysis_response.status_code != 200:
+                continue
+
+            result = analysis_response.json()
+
+            status = (
+                result
+                .get("data", {})
+                .get("attributes", {})
+                .get("status")
+            )
+
+            if status == "completed":
+                break
+
+        if not result:
+
+            return {
+                "success": False,
+                "score": 0,
+                "malicious": 0,
+                "suspicious": 0,
+                "message": "Không nhận được kết quả VirusTotal"
+            }
+
+        stats = (
+            result
+            .get("data", {})
+            .get("attributes", {})
+            .get("stats", {})
+        )
+
+        malicious = int(
+            stats.get("malicious", 0)
+        )
+
+        suspicious = int(
+            stats.get("suspicious", 0)
+        )
+
+        # Tối đa 30 điểm
+        vt_score = min(
+            30,
+            malicious * 3 + suspicious
+        )
+
+        return {
+            "success": True,
+            "score": vt_score,
+            "malicious": malicious,
+            "suspicious": suspicious,
+            "message":
+                "🚨 Phát hiện dấu hiệu độc hại"
+                if malicious > 0
+                else
+                "✅ Không phát hiện mã độc"
+        }
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "score": 0,
+            "malicious": 0,
+            "suspicious": 0,
+            "message":
+                f"Lỗi VirusTotal: {str(e)}"
+        }
+
+
+# ============================================================
+# 10. RISK ENGINE
+# ============================================================
+
+def calculate_risk(
+    safe_result,
+    abuse_result,
+    vt_result
+):
+
+    safe_score = safe_result.get(
+        "score", 0
+    )
+
+    abuse_score = abuse_result.get(
+        "score", 0
+    )
+
+    vt_score = vt_result.get(
+        "score", 0
+    )
+
+    total = (
+        safe_score
+        + abuse_score
+        + vt_score
+    )
+
+    total = min(100, total)
+
+    if total >= 70:
+        level = "HIGH"
+
+    elif total >= 30:
+        level = "MEDIUM"
+
+    else:
+        level = "LOW"
+
+    return total, level
+
+
+# ============================================================
+# 11. VNPAY
+# ============================================================
+
+def sort_dict(data):
+
+    return dict(
+        sorted(
+            data.items(),
+            key=lambda x: x[0]
+        )
+    )
+
+
+def build_vnpay_url(
+    order_id,
+    amount,
+    order_info,
+    return_url,
+    client_ip="127.0.0.1"
+):
+
+    if not VNP_TMN_CODE:
+        raise Exception(
+            "Thiếu VNP_TMN_CODE"
+        )
+
+    if not VNP_HASH_SECRET:
+        raise Exception(
+            "Thiếu VNP_HASH_SECRET"
+        )
+
+    now = datetime.now()
+
+    create_date = now.strftime(
+        "%Y%m%d%H%M%S"
+    )
+
+    expire_date = (
+        now + timedelta(minutes=15)
+    ).strftime(
+        "%Y%m%d%H%M%S"
+    )
+
+    params = {
+        "vnp_Version": "2.1.0",
+        "vnp_Command": "pay",
+        "vnp_TmnCode": VNP_TMN_CODE,
+        "vnp_Amount": str(
+            int(amount * 100)
+        ),
+        "vnp_CurrCode": "VND",
+        "vnp_TxnRef": order_id,
+        "vnp_OrderInfo": order_info,
+        "vnp_OrderType": "other",
+        "vnp_Locale": "vn",
+        "vnp_ReturnUrl": return_url,
+        "vnp_IpAddr": client_ip,
+        "vnp_CreateDate": create_date,
+        "vnp_ExpireDate": expire_date
+    }
+
+    params = sort_dict(params)
+
+    query_string = urllib.parse.urlencode(
+        params,
+        quote_via=urllib.parse.quote
+    )
+
+    secure_hash = hmac.new(
+        VNP_HASH_SECRET.encode("utf-8"),
+        query_string.encode("utf-8"),
+        hashlib.sha512
+    ).hexdigest()
+
+    payment_url = (
+        VNP_URL
+        + "?"
+        + query_string
+        + "&vnp_SecureHash="
+        + secure_hash
+    )
+
+    return payment_url
+
+
+# ============================================================
+# 12. VNPAY VERIFY RETURN
+# ============================================================
+
+def verify_vnpay_response(query_params):
+
+    data = {}
+
+    for key, value in query_params.items():
+
+        if key.startswith("vnp_"):
+            data[key] = value
+
+    received_hash = data.pop(
+        "vnp_SecureHash",
+        ""
+    )
+
+    data.pop(
+        "vnp_SecureHashType",
+        None
+    )
+
+    data = sort_dict(data)
+
+    query_string = urllib.parse.urlencode(
+        data,
+        quote_via=urllib.parse.quote
+    )
+
+    calculated_hash = hmac.new(
+        VNP_HASH_SECRET.encode("utf-8"),
+        query_string.encode("utf-8"),
+        hashlib.sha512
+    ).hexdigest()
+
+    valid = hmac.compare_digest(
+        calculated_hash.lower(),
+        received_hash.lower()
+    )
+
+    return valid, data
+
+
+# ============================================================
+# 13. GHN CREATE ORDER
+# ============================================================
+
+def create_ghn_order(
+    customer_name,
+    customer_phone,
+    customer_address,
+    ward_name,
+    district_name,
+    province_name,
+    product_name,
+    amount,
+    weight
+):
+
+    if not GHN_TOKEN:
+        return {
+            "success": False,
+            "message": "Thiếu GHN_TOKEN"
+        }
+
+    if not GHN_SHOP_ID:
+        return {
+            "success": False,
+            "message": "Thiếu GHN_SHOP_ID"
+        }
+
+    endpoint = (
+        "https://dev-online-gateway.ghn.vn/"
+        "shiip/public-api/v2/shipping-order/create"
+    )
+
+    headers = {
+        "Content-Type": "application/json",
+        "Token": GHN_TOKEN,
+        "ShopId": str(GHN_SHOP_ID)
+    }
+
+    payload = {
+        "payment_type_id": 2,
+
+        "note": "Don hang E-Commerce Demo",
+
+        "required_note": "KHONGCHOXEMHANG",
+
+        "client_order_code":
+            generate_order_id(),
+
+        # ==============================================
+        # THÔNG TIN SHOP
+        # ==============================================
+
+        "from_name":
+            "E-Commerce Demo",
+
+        "from_phone":
+            "0900000000",
+
+        "from_address":
+            "39 Nguyen Thi Thap",
+
+        "from_ward_name":
+            "Phuong Tan Phu",
+
+        "from_district_name":
+            "Quan 7",
+
+        "from_province_name":
+            "Ho Chi Minh",
+
+        # ==============================================
+        # KHÁCH HÀNG
+        # ==============================================
+
+        "to_name":
+            customer_name,
+
+        "to_phone":
+            customer_phone,
+
+        "to_address":
+            customer_address,
+
+        "to_ward_name":
+            ward_name,
+
+        "to_district_name":
+            district_name,
+
+        "to_province_name":
+            province_name,
+
+        # ==============================================
+        # HÀNG HÓA
+        # ==============================================
+
+        "cod_amount":
+            int(amount),
+
+        "content":
+            product_name,
+
+        "weight":
+            int(weight),
+
+        "length":
+            20,
+
+        "width":
+            15,
+
+        "height":
+            10,
+
+        "service_type_id":
+            2
+    }
+
+    try:
+
+        response = requests.post(
+            endpoint,
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+
+        data = response.json()
+
+        if response.status_code == 200:
+
+            if data.get("code") == 200:
+
+                result = data.get(
+                    "data",
+                    {}
+                )
+
+                return {
+                    "success": True,
+                    "order_code":
+                        result.get(
+                            "order_code"
+                        ),
+                    "total_fee":
+                        result.get(
+                            "total_fee"
+                        ),
+                    "expected_delivery_time":
+                        result.get(
+                            "expected_delivery_time"
+                        ),
+                    "message":
+                        data.get(
+                            "message",
+                            "Success"
+                        )
+                }
+
+        return {
+            "success": False,
+            "message":
+                data.get(
+                    "message",
+                    response.text
+                )
+        }
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "message":
+                f"Lỗi GHN: {str(e)}"
+        }
+
+
+# ============================================================
+# 14. HEADER
+# ============================================================
+
+st.markdown(
+    '<div class="main-title">'
+    '🛍️ SÀN THƯƠNG MẠI ĐIỆN TỬ'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="subtitle">'
+    'AI + Security 3 lớp + Risk Engine + VNPay + GHN'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+
+# ============================================================
+# 15. SIDEBAR
+# ============================================================
+
+with st.sidebar:
+
+    st.header("⚙️ SYSTEM STATUS")
+
+    st.write(
+        "🤖 Gemini:",
+        "🟢"
+        if GEMINI_API_KEY
+        else "🔴"
+    )
+
+    st.write(
+        "🌐 Safe Browsing:",
+        "🟢"
+        if SAFE_BROWSING_API_KEY
+        else "🔴"
+    )
+
+    st.write(
+        "📍 AbuseIPDB:",
+        "🟢"
+        if ABUSEIPDB_API_KEY
+        else "🔴"
+    )
+
+    st.write(
+        "🛡️ VirusTotal:",
+        "🟢"
+        if VIRUSTOTAL_API_KEY
+        else "🔴"
+    )
+
+    st.write(
+        "💳 VNPay:",
+        "🟢"
+        if VNP_TMN_CODE
+        and VNP_HASH_SECRET
+        else "🔴"
+    )
+
+    st.write(
+        "🚚 GHN:",
+        "🟢"
+        if GHN_TOKEN
+        and GHN_SHOP_ID
+        else "🔴"
+    )
+
+    st.divider()
+
+    st.markdown("### 📊 Risk Policy")
+
+    st.write("🟢 0–29 → LOW")
+    st.write("🟡 30–69 → MEDIUM")
+    st.write("🔴 70–100 → HIGH")
+
+
+# ============================================================
+# 16. TABS
+# ============================================================
+
+tab1, tab2, tab3 = st.tabs(
+    [
+        "💬 Gemini AI",
+        "🚀 Đặt hàng & Security",
+        "📋 Lịch sử đơn hàng"
+    ]
+)
+
+
+# ============================================================
+# TAB 1
+# ============================================================
+
 with tab1:
-    st.subheader("🤖 Tư Vấn Khách Hàng - Google Gemini AI")
-    st.markdown("Chức năng: *Hỗ trợ khách hàng tìm kiếm và chọn lựa sản phẩm trước khi đặt hàng*")
-    
-    if "chat_messages" not in st.session_state:
-        st.session_state.chat_messages = [
-            {"role": "assistant", "content": "Xin chào! Tôi là trợ lý AI. Bạn đang muốn tìm sản phẩm nào hôm nay?"}
-        ]
 
-    for msg in st.session_state.chat_messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
+    st.subheader(
+        "🤖 Gemini AI - Tư vấn khách hàng"
+    )
 
-    if prompt := st.chat_input("Hỏi AI tư vấn sản phẩm..."):
-        st.session_state.chat_messages.append({"role": "user", "content": prompt})
+    for message in st.session_state.chat_messages:
+
+        with st.chat_message(
+            message["role"]
+        ):
+
+            st.markdown(
+                message["content"]
+            )
+
+    prompt = st.chat_input(
+        "Nhập câu hỏi..."
+    )
+
+    if prompt:
+
+        st.session_state.chat_messages.append(
+            {
+                "role": "user",
+                "content": prompt
+            }
+        )
+
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        if GEMINI_API_KEY:
-            with st.chat_message("assistant"):
-                with st.spinner("Gemini AI đang tư vấn..."):
-                    try:
-                        client = genai.Client(api_key=GEMINI_API_KEY)
-                        context = "Bạn là trợ lý tư vấn bán hàng TMĐT. Trả lời thân thiện, ngắn gọn dưới 3 câu. Lịch sử:\n"
-                        for m in st.session_state.chat_messages[-6:]:
-                            context += f"{m['role']}: {m['content']}\n"
-                        
-                        response = client.models.generate_content(
-                            model='gemini-3.5-flash-lite',
-                            contents=context
-                        )
-                        answer = response.text
-                        st.markdown(answer)
-                        st.session_state.chat_messages.append({"role": "assistant", "content": answer})
-                    except Exception as e:
-                        st.error(f"Lỗi gọi Gemini API: {e}")
-        else:
-            st.warning("⚠️ Chưa cấu hình GEMINI_API_KEY trong Secrets!")
+        with st.chat_message("assistant"):
 
-# ==========================================
-# BƯỚC 3 -> 12: ĐẶT HÀNG & MÔ HÌNH XỬ LÝ RỦI RO THEO SƠ ĐỒ
-# ==========================================
+            with st.spinner(
+                "Gemini đang tư vấn..."
+            ):
+
+                answer = gemini_chat(
+                    prompt
+                )
+
+            st.markdown(answer)
+
+        st.session_state.chat_messages.append(
+            {
+                "role": "assistant",
+                "content": answer
+            }
+        )
+
+
+# ============================================================
+# TAB 2
+# ============================================================
+
 with tab2:
-    st.subheader("🛒 Quy Trình Đặt Hàng & Kiểm Soát Rủi Ro Phân Nhánh")
-    
-    st.markdown("### 📦 1. Khách hàng chọn sản phẩm & Đặt hàng")
+
+    st.subheader(
+        "🚀 Đặt hàng & kiểm soát rủi ro"
+    )
+
+    # --------------------------------------------------------
+    # PRODUCT
+    # --------------------------------------------------------
+
+    st.markdown(
+        "### 📦 1. Thông tin đơn hàng"
+    )
+
     col1, col2 = st.columns(2)
+
     with col1:
-        product_name = st.text_input("Tên sản phẩm:", "Giày Snaker Thể Thao Pro")
-        product_price = st.text_input("Giá tiền:", "1.200.000 VNĐ")
+
+        product_name = st.text_input(
+            "Tên sản phẩm",
+            "Giày Sneaker Thể Thao Pro"
+        )
+
+        price_text = st.text_input(
+            "Giá sản phẩm (VNĐ)",
+            "1200000"
+        )
+
     with col2:
-        customer_name = st.text_input("Họ tên khách hàng:", "Đỗ Trung Kiên")
-        customer_address = st.text_input("Địa chỉ giao hàng:", "TP. Hồ Chí Minh")
+
+        customer_name = st.text_input(
+            "Họ tên khách hàng",
+            "Đỗ Trung Kiên"
+        )
+
+        customer_phone = st.text_input(
+            "Số điện thoại",
+            "0900000000"
+        )
+
+        customer_address = st.text_input(
+            "Địa chỉ",
+            "39 Nguyen Thi Thap"
+        )
+
+    col3, col4, col5 = st.columns(3)
+
+    with col3:
+
+        province_name = st.text_input(
+            "Tỉnh / Thành phố",
+            "Ho Chi Minh"
+        )
+
+    with col4:
+
+        district_name = st.text_input(
+            "Quận / Huyện",
+            "Quan 7"
+        )
+
+    with col5:
+
+        ward_name = st.text_input(
+            "Phường / Xã",
+            "Phuong Tan Phu"
+        )
+
+    try:
+
+        price = float(
+            price_text
+            .replace(".", "")
+            .replace(",", "")
+            .replace(" ", "")
+        )
+
+    except:
+
+        price = 0
+
+    st.info(
+        f"💰 Giá trị đơn hàng: "
+        f"**{money(price)}**"
+    )
+
+    # --------------------------------------------------------
+    # SECURITY INPUT
+    # --------------------------------------------------------
 
     st.divider()
-    st.markdown("### 🛡️ 2. Mô phỏng tham số Kiểm tra An ninh (Dành cho Demo)")
-    st.caption("Thay đổi các giá trị bên dưới để test các nhánh Rủi ro Thấp / Trung bình / Cao theo sơ đồ:")
-    
-    col_sec1, col_sec2, col_sec3 = st.columns(3)
-    with col_sec1:
-        input_url = st.selectbox("Safe Browsing (Quét URL):", ["URL An toàn (Clean)", "URL Độc hại / Phishing (Danger)"])
-    with col_sec2:
-        input_ip = st.selectbox("AbuseIPDB (Mức độ rủi ro IP):", ["IP Sạch (Risk 0%)", "IP Nghi vấn (Risk 45%)", "IP Spam/Tấn công (Risk 90%)"])
-    with col_sec3:
-        input_file = st.selectbox("VirusTotal (Quét File/Mã độc):", ["File Sạch (0/72 Clean)", "Phát hiện Mã độc (Malware Flagged)"])
 
-    if st.button("🔥 KÍCH HOẠT QUY TRÌNH XỬ LÝ ĐƠN HÀNG", type="primary"):
-        st.divider()
-        st.markdown("## 🔄 LUỒNG XỬ LÝ TỰ ĐỘNG THEO SƠ ĐỒ KIẾN TRÚC")
+    st.markdown(
+        "### 🛡️ 2. Security Check"
+    )
 
-        # ----------------------------------------------------
-        # BƯỚC: SECURITY CHECK (Safe Browsing, AbuseIPDB, VirusTotal)
-        # ----------------------------------------------------
-        with st.status("🔍 1. Đang thực hiện Kiểm tra An ninh 3 lớp...", expanded=True) as status_sec:
-            time.sleep(0.6)
-            st.write(f"🌐 **Safe Browsing**: {input_url}")
-            time.sleep(0.6)
-            st.write(f"📍 **AbuseIPDB**: {input_ip}")
-            time.sleep(0.6)
-            st.write(f"🛡️ **VirusTotal**: {input_file}")
-            status_sec.update(label="✅ Hoàn tất kiểm tra 3 lớp an ninh!", state="complete", expanded=False)
+    url_to_check = st.text_input(
+        "🌐 URL cần kiểm tra",
+        "https://example.com"
+    )
 
-        # ----------------------------------------------------
-        # BƯỚC: RISK SCORE (Tính toán điểm rủi ro)
-        # ----------------------------------------------------
-        risk_level = "LOW"
-        if "Phishing" in input_url or "90%" in input_ip or "Malware" in input_file:
-            risk_level = "HIGH"
-        elif "45%" in input_ip:
-            risk_level = "MEDIUM"
+    ip_to_check = st.text_input(
+        "📍 IP cần kiểm tra",
+        "8.8.8.8"
+    )
 
-        st.markdown("---")
-        st.markdown("### 📊 RISK SCORE - DÙNG NGUYÊN TẮC PHÂN NHÁNH")
+    uploaded_file = st.file_uploader(
+        "🛡️ File cần kiểm tra bằng VirusTotal",
+        type=None
+    )
 
-        # NHÁNH 1: RỦI RO CAO (HIGH RISK) -> CHẶN ĐƠN HÀNG
+    st.caption(
+        "Bản này hiện dùng VirusTotal để kiểm tra URL. "
+        "File upload sẽ được bổ sung ở bước tiếp theo nếu cần."
+    )
+
+    # --------------------------------------------------------
+    # WORKFLOW
+    # --------------------------------------------------------
+
+    if st.button(
+        "🔥 KÍCH HOẠT SECURITY + RISK ENGINE",
+        type="primary",
+        use_container_width=True
+    ):
+
+        if price <= 0:
+
+            st.error(
+                "❌ Giá sản phẩm không hợp lệ."
+            )
+
+            st.stop()
+
+        if not customer_phone:
+
+            st.error(
+                "❌ Vui lòng nhập số điện thoại."
+            )
+
+            st.stop()
+
+        order_id = generate_order_id()
+
+        st.markdown(
+            f"## 🆔 Order ID: `{order_id}`"
+        )
+
+        progress = st.progress(0)
+
+        # ====================================================
+        # SAFE BROWSING
+        # ====================================================
+
+        with st.status(
+            "🌐 Google Safe Browsing...",
+            expanded=True
+        ) as status:
+
+            safe_result = check_safe_browsing(
+                url_to_check
+            )
+
+            if safe_result["success"]:
+
+                st.write(
+                    safe_result["message"]
+                )
+
+            else:
+
+                st.error(
+                    safe_result["message"]
+                )
+
+            status.update(
+                label="🌐 Safe Browsing hoàn tất",
+                state="complete"
+            )
+
+        progress.progress(25)
+
+        # ====================================================
+        # ABUSEIPDB
+        # ====================================================
+
+        with st.status(
+            "📍 AbuseIPDB...",
+            expanded=True
+        ) as status:
+
+            abuse_result = check_abuse_ip(
+                ip_to_check
+            )
+
+            st.write(
+                abuse_result["message"]
+            )
+
+            if abuse_result.get(
+                "confidence"
+            ) is not None:
+
+                st.write(
+                    "Abuse Confidence Score: "
+                    f"**{abuse_result['confidence']}%**"
+                )
+
+                st.write(
+                    "Reports: "
+                    f"**{abuse_result.get('total_reports', 0)}**"
+                )
+
+            status.update(
+                label="📍 AbuseIPDB hoàn tất",
+                state="complete"
+            )
+
+        progress.progress(50)
+
+        # ====================================================
+        # VIRUSTOTAL
+        # ====================================================
+
+        with st.status(
+            "🛡️ VirusTotal...",
+            expanded=True
+        ) as status:
+
+            vt_result = check_virustotal_url(
+                url_to_check
+            )
+
+            st.write(
+                vt_result["message"]
+            )
+
+            if vt_result["success"]:
+
+                st.write(
+                    f"Malicious: "
+                    f"**{vt_result['malicious']}**"
+                )
+
+                st.write(
+                    f"Suspicious: "
+                    f"**{vt_result['suspicious']}**"
+                )
+
+            status.update(
+                label="🛡️ VirusTotal hoàn tất",
+                state="complete"
+            )
+
+        progress.progress(75)
+
+        # ====================================================
+        # RISK ENGINE
+        # ====================================================
+
+        risk_score, risk_level = calculate_risk(
+            safe_result,
+            abuse_result,
+            vt_result
+        )
+
+        st.markdown(
+            "### 📊 3. RISK ENGINE"
+        )
+
+        r1, r2, r3, r4 = st.columns(4)
+
+        with r1:
+
+            st.metric(
+                "Safe Browsing",
+                f"+{safe_result.get('score', 0)}"
+            )
+
+        with r2:
+
+            st.metric(
+                "AbuseIPDB",
+                f"+{abuse_result.get('score', 0)}"
+            )
+
+        with r3:
+
+            st.metric(
+                "VirusTotal",
+                f"+{vt_result.get('score', 0)}"
+            )
+
+        with r4:
+
+            st.metric(
+                "RISK SCORE",
+                f"{risk_score}/100"
+            )
+
+        st.progress(
+            risk_score / 100
+        )
+
+        # ====================================================
+        # HIGH
+        # ====================================================
+
         if risk_level == "HIGH":
-            st.error("🔴 **MỨC RỦI RO: CAO (High Risk Score)**")
-            st.warning("🚨 Phát hiện mối đe dọa an ninh nghiêm trọng (URL độc hại, IP nằm trong danh sách đen hoặc có mã độc)!")
-            time.sleep(0.5)
-            st.error("⛔ **KẾT QUẢ: CHẶN ĐƠN HÀNG!** Hệ thống đã hủy giao dịch để bảo vệ an toàn.")
 
-        # NHÁNH 2: RỦI RO TRUNG BÌNH (MEDIUM RISK) -> CẢNH BÁO -> XÁC MINH
+            st.error(
+                f"🔴 HIGH RISK — {risk_score}/100"
+            )
+
+            st.error(
+                "⛔ ĐƠN HÀNG BỊ CHẶN."
+            )
+
+            st.warning(
+                "Hệ thống phát hiện mức rủi ro cao. "
+                "Không chuyển sang VNPay."
+            )
+
+            status = "BLOCKED"
+
+        # ====================================================
+        # MEDIUM
+        # ====================================================
+
         elif risk_level == "MEDIUM":
-            st.warning("🟡 **MỨC RỦI RO: TRUNG BÌNH (Medium Risk Score)**")
-            st.info("⚠️ **CẢNH BÁO**: Yêu cầu xác minh danh tính khách hàng trước khi cho phép thanh toán.")
-            
-            st.markdown("#### 🔐 XÁC MINH KHÁCH HÀNG (OTP / Captcha)")
-            user_otp = st.text_input("Nhập mã OTP xác minh gửi về điện thoại (Thử nhập '123456'):", key="otp_input")
-            
-            if st.button("Xác thực OTP"):
-                if user_otp == "123456":
-                    st.success("✅ **Xác minh đạt!** Cho phép tiếp tục luồng thanh toán.")
-                    
-                    # Tiến hành Thanh toán -> Vận chuyển -> Thông báo
-                    with st.spinner("💳 1. Kết nối VNPay..."):
-                        time.sleep(1)
-                        st.success("💳 **Thanh toán VNPay**: Giao dịch thành công (Mã: VNP99823)")
-                    with st.spinner("🚚 2. Kết nối GHN..."):
-                        time.sleep(1)
-                        st.success("🚚 **Vận chuyển GHN**: Khởi tạo đơn hàng thành công (Mã: GHN-VN-99823)")
-                    with st.spinner("🔔 3. Kết nối Notification API..."):
-                        time.sleep(1)
-                        st.success("🔔 **Thông báo (Twilio/Zalo ZNS)**: Đã gửi SMS xác nhận đơn hàng thành công đến khách hàng!")
-                    st.balloons()
+
+            st.warning(
+                f"🟡 MEDIUM RISK — {risk_score}/100"
+            )
+
+            st.info(
+                "Yêu cầu xác minh OTP trước khi thanh toán."
+            )
+
+            otp = st.text_input(
+                "🔐 OTP Demo",
+                type="password"
+            )
+
+            if st.button(
+                "Xác thực OTP"
+            ):
+
+                if otp != "123456":
+
+                    st.error(
+                        "❌ OTP không chính xác."
+                    )
+
+                    status = "BLOCKED"
+
                 else:
-                    st.error("❌ **Xác minh không đạt!** Mã OTP sai.")
-                    st.error("⛔ **KẾT QUẢ: CHẶN ĐƠN HÀNG!**")
 
-        # NHÁNH 3: RỦI RO THẤP (LOW RISK) -> THANH TOÁN -> VẬN CHUYỂN -> THÔNG BÁO
+                    st.success(
+                        "✅ OTP xác minh thành công."
+                    )
+
+                    status = "OTP_VERIFIED"
+
+            else:
+
+                status = "WAITING_OTP"
+
+        # ====================================================
+        # LOW
+        # ====================================================
+
         else:
-            st.success("🟢 **MỨC RỦI RO: THẤP (Low Risk Score)**")
-            st.markdown("Chuyển thẳng sang luồng xử lý tự động:")
-            
-            col_a, col_b, col_c = st.columns(3)
-            
-            with col_a:
-                with st.status("💳 THANH TOÁN (VNPay)", expanded=True):
-                    time.sleep(0.8)
-                    st.write("Cổng thanh toán: VNPay Sandbox")
-                    st.write("Số tiền: 1.200.000 VNĐ")
-                    st.write("Trạng thái: **Thành công (00)**")
-            
-            with col_b:
-                with st.status("🚚 VẬN CHUYỂN (GHN)", expanded=True):
-                    time.sleep(0.8)
-                    st.write("Đơn vị: Giao Hàng Nhanh")
-                    st.write("Mã vận đơn: `GHN-VN-102938`")
-                    st.write("Trạng thái: **Đã tiếp nhận**")
 
-            with col_c:
-                with st.status("🔔 THÔNG BÁO (Twilio/Zalo)", expanded=True):
-                    time.sleep(0.8)
-                    st.write("Kênh gửi: Twilio SMS / Zalo ZNS")
-                    st.write("Nội dung: *Đơn hàng đã được xác nhận*")
-                    st.write("Trạng thái: **Đã gửi**")
+            st.success(
+                f"🟢 LOW RISK — {risk_score}/100"
+            )
 
-            st.balloons()
-            st.success("🎉 **ĐƠN HÀNG HOÀN TẤT THÀNH CÔNG THEO ĐÚNG TIẾN TRÌNH RỦI RO THẤP!**")
+            st.success(
+                "Có thể tiếp tục thanh toán VNPay."
+            )
+
+            status = "APPROVED"
+
+
+        # ====================================================
+        # SAVE ORDER
+        # ====================================================
+
+        st.session_state.orders[
+            order_id
+        ] = {
+
+            "order_id":
+                order_id,
+
+            "created_at":
+                datetime.now().strftime(
+                    "%d/%m/%Y %H:%M:%S"
+                ),
+
+            "customer":
+                customer_name,
+
+            "phone":
+                customer_phone,
+
+            "product":
+                product_name,
+
+            "amount":
+                price,
+
+            "risk_score":
+                risk_score,
+
+            "risk_level":
+                risk_level,
+
+            "status":
+                status
+        }
+
+
+        # ====================================================
+        # PAYMENT
+        # ====================================================
+
+        if status in [
+            "APPROVED",
+            "OTP_VERIFIED"
+        ]:
+
+            st.divider()
+
+            st.markdown(
+                "### 💳 4. VNPay Sandbox"
+            )
+
+            # Streamlit URL hiện tại
+            return_url = (
+                "https://"
+                + st.context.headers.get(
+                    "Host",
+                    ""
+                )
+            )
+
+            if return_url.endswith(".streamlit.app"):
+
+                return_url = (
+                    "https://"
+                    + st.context.headers.get(
+                        "Host"
+                    )
+                )
+
+            try:
+
+                payment_url = build_vnpay_url(
+                    order_id,
+                    price,
+                    f"Thanh toan don hang {order_id}",
+                    return_url
+                )
+
+                st.success(
+                    "✅ Đã tạo URL thanh toán VNPay."
+                )
+
+                st.link_button(
+                    "💳 THANH TOÁN QUA VNPAY",
+                    payment_url,
+                    use_container_width=True
+                )
+
+                st.info(
+                    "Sau khi thanh toán, VNPay sẽ "
+                    "redirect về Return URL."
+                )
+
+            except Exception as e:
+
+                st.error(
+                    f"❌ Không tạo được VNPay URL: {e}"
+                )
+
+
+# ============================================================
+# TAB 3
+# ============================================================
+
+with tab3:
+
+    st.subheader(
+        "📋 Lịch sử đơn hàng"
+    )
+
+    if not st.session_state.orders:
+
+        st.info(
+            "Chưa có đơn hàng."
+        )
+
+    else:
+
+        for order_id, order in reversed(
+            list(
+                st.session_state.orders.items()
+            )
+        ):
+
+            with st.expander(
+                f"{order_id} — "
+                f"{order['risk_level']} — "
+                f"{money(order['amount'])}"
+            ):
+
+                st.write(
+                    "👤 Khách hàng:",
+                    order["customer"]
+                )
+
+                st.write(
+                    "📦 Sản phẩm:",
+                    order["product"]
+                )
+
+                st.write(
+                    "💰 Giá:",
+                    money(order["amount"])
+                )
+
+                st.write(
+                    "📊 Risk Score:",
+                    f"{order['risk_score']}/100"
+                )
+
+                st.write(
+                    "🚦 Risk Level:",
+                    order["risk_level"]
+                )
+
+                st.write(
+                    "📌 Status:",
+                    order["status"]
+                )
+
+                st.write(
+                    "🕒 Thời gian:",
+                    order["created_at"]
+                )
