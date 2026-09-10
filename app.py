@@ -8,7 +8,27 @@ import uuid
 from datetime import datetime, timedelta
 from google import genai
 
-
+# Danh sách sản phẩm cố định
+PRODUCTS = [
+    {
+        "name": "Điện thoại thông minh",
+        "price": 5000000,
+        "risk_score": 20,
+        "risk_level": "Thấp"
+    },
+    {
+        "name": "Laptop gaming",
+        "price": 20000000,
+        "risk_score": 50,
+        "risk_level": "Trung bình"
+    },
+    {
+        "name": "Trang sức vàng",
+        "price": 30000000,
+        "risk_score": 80,
+        "risk_level": "Cao"
+    }
+]
 # ============================================================
 # 1. PAGE CONFIG
 # ============================================================
@@ -1247,17 +1267,16 @@ with tab1:
 
 
 # ============================================================
-# TAB 2 - Đặt hàng & kiểm soát rủi ro
+# TAB 2 - Đặt hàng & kiểm soát rủi ro (tự động Security Check)
 # ============================================================
 
 with tab2:
-
     st.subheader("🚀 Đặt hàng & kiểm soát rủi ro")
 
     # --------------------------------------------------------
-    # PRODUCT
+    # PRODUCT INFO
     # --------------------------------------------------------
-    st.markdown("### 📦 1. Thông tin đơn hàng")
+    st.markdown("### 📦 Thông tin đơn hàng")
 
     col1, col2 = st.columns(2)
 
@@ -1289,15 +1308,9 @@ with tab2:
     st.info(f"💰 Giá trị đơn hàng: **{money(price)}**")
 
     # --------------------------------------------------------
-    # SECURITY + RISK ENGINE
+    # AUTO SECURITY CHECK
     # --------------------------------------------------------
-    st.divider()
-    st.markdown("### 🛡️ 2. Security Check")
-
-    url_to_check = st.text_input("🌐 URL cần kiểm tra", "https://example.com")
-    ip_to_check = st.text_input("📍 IP cần kiểm tra", "8.8.8.8")
-
-    if st.button("🔥 KÍCH HOẠT SECURITY + RISK ENGINE", type="primary", use_container_width=True):
+    if st.button("🔥 Đặt hàng", type="primary", use_container_width=True):
 
         if price <= 0:
             st.error("❌ Giá sản phẩm không hợp lệ.")
@@ -1313,19 +1326,14 @@ with tab2:
 
         progress = st.progress(0)
 
-        # SAFE BROWSING
-        safe_result = check_safe_browsing(url_to_check)
-        st.write(safe_result["message"])
+        # Chạy Security Check tự động với giá trị mặc định
+        safe_result = check_safe_browsing("https://example.com")
         progress.progress(25)
 
-        # ABUSEIPDB
-        abuse_result = check_abuse_ip(ip_to_check)
-        st.write(abuse_result["message"])
+        abuse_result = check_abuse_ip("8.8.8.8")
         progress.progress(50)
 
-        # VIRUSTOTAL
-        vt_result = check_virustotal_url(url_to_check)
-        st.write(vt_result["message"])
+        vt_result = check_virustotal_url("https://example.com")
         progress.progress(75)
 
         # RISK ENGINE
@@ -1355,6 +1363,7 @@ with tab2:
 
         # SAVE ORDER
         order_data = {
+            "created_at": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
             "customer_name": customer_name,
             "customer_phone": customer_phone,
             "customer_address": customer_address,
@@ -1378,7 +1387,7 @@ with tab2:
         # PAYMENT
         if status in ["APPROVED", "OTP_VERIFIED"]:
             st.divider()
-            st.markdown("### 💳 3. VNPay Sandbox")
+            st.markdown("### 💳 VNPay Sandbox")
 
             return_url = "https://" + st.context.headers.get("Host", "")
             try:
@@ -1402,8 +1411,8 @@ with tab3:
             with st.expander(f"🆔 Đơn hàng {oid}"):
                 st.write(f"📅 Ngày tạo: {order.get('created_at', 'N/A')}")
                 st.write(f"👤 Khách hàng: {order.get('customer_name', 'N/A')}")
-                st.write(f"📞 SĐT: {order.get('phone', 'N/A')}")
-                st.write(f"📦 Sản phẩm: {order.get('product_name', order.get('product', 'N/A'))}")
+                st.write(f"📞 SĐT: {order.get('customer_phone', 'N/A')}")
+                st.write(f"📦 Sản phẩm: {order.get('product_name', 'N/A')}")
                 st.write(f"💰 Giá trị: {money(order.get('amount', 0))}")
                 st.write(f"📊 Risk Score: {order.get('risk_score', 0)} ({order.get('risk_level', 'N/A')})")
                 st.write(f"📌 Trạng thái: {order.get('status', 'N/A')}")
