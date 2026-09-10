@@ -1127,8 +1127,8 @@ with tab1:
             payment_url = build_vnpay_url(order_id, selected_product["price"], f"Thanh toan don hang {order_id}", return_url)
             st.link_button("💳 THANH TOÁN QUA VNPAY", payment_url, use_container_width=True)
     
-                except Exception as e:
-                    st.error(f"❌ Không tạo được VNPay URL: {e}")
+            except Exception as e:
+                st.error(f"❌ Không tạo được VNPay URL: {e}")
 
 # ============================================================
 # TAB 3 - Lịch sử đơn hàng (cập nhật sau thanh toán)
