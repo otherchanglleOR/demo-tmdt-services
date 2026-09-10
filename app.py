@@ -1,88 +1,129 @@
 import streamlit as st
-import requests
 import time
 import os
 from google import genai
 
-# Lấy Gemini API Key từ cấu hình Secrets
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+# Page Config
+st.set_page_config(
+    page_title="E-Commerce Internet Services Demo",
+    page_icon="🛍️",
+    layout="wide"
+)
 
-st.set_page_config(page_title="Demo Internet Services - Sàn TMĐT", layout="wide")
-st.title("🛒 DEMO TÍCH HỢP 5 INTERNET SERVICES CHO SÀN TMĐT")
+# Title & Banner
+st.title("🛍️ Sàn Thương Mại Điện Tử - Demo Tích Hợp Internet Services")
+st.caption("Đồ án môn học: Hệ thống tích hợp AI Service, Multi-Security Services, Payment & Logistics API")
 
-# Thanh bên hông (Sidebar)
-st.sidebar.header("🔌 TRẠNG THÁI KẾT NỐI SERVICES")
-st.sidebar.success("1. AI Service: Google Gemini API (Flash-8B Ultra-Light)")
-st.sidebar.success("2. Security WAF: Cloudflare (Proxy)")
-st.sidebar.success("3. Security Fraud: vKey / Device Check (Active)")
-st.sidebar.success("4. Payment Service: VNPay Gateway (Sandbox)")
-st.sidebar.success("5. Shipping/Notify: GHN API & Zalo ZNS (Sandbox)")
+# Retrieve API Key from Streamlit Secrets
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
-tab1, tab2 = st.tabs(["🤖 1. AI Tư Vấn Khách Hàng", "📦 2. Workflow Tự Động Hóa Đặt Hàng"])
+# Tabs Navigation according to Architecture Diagram
+tab1, tab2, tab3 = st.tabs([
+    "1. AI Service (Gemini)", 
+    "2. Security Services (Google, AbuseIPDB, VirusTotal)", 
+    "3. Full E-Commerce Workflow"
+])
 
-# ---------------------------------------------------------
-# TAB 1: AI SERVICE (GOOGLE GEMINI 3.5 FLASH LITE)
-# ---------------------------------------------------------
+# ==========================================
+# TAB 1: AI SERVICE (GOOGLE GEMINI)
+# ==========================================
 with tab1:
-    st.subheader("Trải nghiệm AI Service tư vấn bán hàng")
-    user_query = st.text_input("Nhập câu hỏi của khách hàng:", "Tư vấn cho tôi tai nghe bluetooth giá dưới 1 triệu")
+    st.subheader("🤖 AI Service: Google Gemini AI")
+    st.markdown("Chức năng: *Tư vấn khách hàng tự động*")
+    
+    user_query = st.text_input("Nhập câu hỏi tư vấn của khách hàng:", "Tư vấn cho tôi tai nghe bluetooth chơi game dưới 1 triệu")
     
     if st.button("Gửi cho AI Tư Vấn"):
         if GEMINI_API_KEY:
-            with st.spinner("Google AI đang xử lý..."):
+            with st.spinner("Google Gemini đang phân tích câu hỏi..."):
                 try:
                     client = genai.Client(api_key=GEMINI_API_KEY)
-                    # Dùng gemini-3.5-flash-lite 
                     response = client.models.generate_content(
                         model='gemini-3.5-flash-lite',
                         contents=f"Bạn là AI tư vấn bán hàng TMĐT. Trả lời ngắn gọn dưới 3 câu, thân thiện: {user_query}"
                     )
-                    st.info(f"**Phản hồi từ Google Gemini AI:**\n\n{response.text}")
+                    st.success("Phản hồi từ Google Gemini AI:")
+                    st.write(response.text)
                 except Exception as e:
                     st.error(f"Lỗi gọi AI API: {e}")
         else:
             st.warning("⚠️ Chưa cấu hình GEMINI_API_KEY trong Secrets của Streamlit Cloud!")
 
-# ---------------------------------------------------------
-# TAB 2: WORKFLOW TỰ ĐỘNG HÓA
-# ---------------------------------------------------------
+# ==========================================
+# TAB 2: SECURITY SERVICES (TRIPLE CHECK)
+# ==========================================
 with tab2:
-    st.subheader("Luồng tự động hóa kết nối Security -> Payment -> Shipping -> Notification")
+    st.subheader("🛡️ Security Services: Kiểm Tra An Ninh 3 Lớp")
+    st.markdown("Chức năng: *Kiểm tra URL, Địa chỉ IP và File/Hành vi độc hại trước khi giao dịch*")
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
+    
     with col1:
-        product_name = st.text_input("Tên sản phẩm", "Áo Polo Unisex Local Brand")
-        price = st.number_input("Giá tiền (VND)", value=250000)
-        customer_name = st.text_input("Tên khách hàng", "Đỗ Trung Kiên")
-        customer_phone = st.text_input("Số điện thoại", "0901234567")
-        customer_address = st.text_input("Địa chỉ giao hàng", "Quận 1, TP. Hồ Chí Minh")
-        
+        st.markdown("### 1. Google Safe Browsing")
+        test_url = st.text_input("Nhập URL kiểm tra:", "https://my-store.com/checkout")
+        if st.button("Kiểm tra URL"):
+            with st.spinner("Scanning URL..."):
+                time.sleep(1)
+                st.success(f"✅ **Google Safe Browsing**: URL `{test_url}` An toàn (No Phishing / Malware).")
+
     with col2:
-        st.write("**Kích hoạt đơn hàng & Chạy Workflow:**")
-        if st.button("🚀 BẤM ĐẶT HÀNG (KÍCH HOẠT WORKFLOW)"):
-            st.write("---")
+        st.markdown("### 2. AbuseIPDB")
+        test_ip = st.text_input("Nhập IP truy cập:", "113.161.72.11")
+        if st.button("Kiểm tra IP"):
+            with st.spinner("Checking IP Risk Score..."):
+                time.sleep(1)
+                st.info(f"📊 **AbuseIPDB**: IP `{test_ip}` - Confidence Score: **0% Risk** (Clean IP).")
+
+    with col3:
+        st.markdown("### 3. VirusTotal")
+        test_file = st.selectbox("Hành vi/File đính kèm:", ["order_payload.json", "payment_receipt.png"])
+        if st.button("Quét Virus / Behavior"):
+            with st.spinner("Analyzing Behavior..."):
+                time.sleep(1)
+                st.success(f"🛡️ **VirusTotal**: 0/72 Vendors flagged `{test_file}`. Clean!")
+
+# ==========================================
+# TAB 3: FULL WORKFLOW (KHỚP SƠ ĐỒ KIẾN TRÚC)
+# ==========================================
+with tab3:
+    st.subheader("🚀 Luồng Xử Lý Đặt Hàng Tự Động (API Gateway Integration)")
+    
+    st.write("**Thông tin đơn hàng mẫu:**")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.text_input("Sản phẩm:", "Tai nghe Bluetooth Wireless x1", disabled=True)
+        st.text_input("Tổng tiền:", "850.000 VNĐ", disabled=True)
+    with col_b:
+        st.text_input("Khách hàng:", "Đỗ Trung Kiên", disabled=True)
+        st.text_input("Địa chỉ giao hàng:", "TP. Hồ Chí Minh", disabled=True)
+
+    if st.button("🔥 BẤM ĐẶT HÀNG (KÍCH HOẠT API GATEWAY)", type="primary"):
+        st.divider()
+        st.markdown("### 🔄 API Gateway đang điều phối các Services:")
+        
+        # Step 1: Security Services (Triple Check)
+        with st.status("1. Security Services đang kiểm tra an toàn...", expanded=True) as status1:
+            time.sleep(0.8)
+            st.write("🟢 **Google Safe Browsing**: URL checkout hợp lệ.")
+            time.sleep(0.6)
+            st.write("🟢 **AbuseIPDB**: IP người dùng an toàn (Risk Score: 0%).")
+            time.sleep(0.6)
+            st.write("🟢 **VirusTotal**: Không phát hiện hành vi bất thường/mã độc.")
+            status1.update(label="✅ Security Services: Đã vượt qua 3 lớp kiểm tra an ninh!", state="complete", expanded=False)
             
-            # 1. SECURITY CHECK
-            st.write("🔍 **Bước 1: Gọi Security API (Cloudflare / vKey Check Risk Score)...**")
+        # Step 2: Payment Service (VNPay)
+        with st.status("2. Payment Service (VNPay) đang xử lý...", expanded=True) as status2:
             time.sleep(1)
-            st.success("✅ Security Passed! (IP Check: OK | Device Risk Score: 10/100 - An toàn)")
-
-            # 2. PAYMENT API
-            st.write("🔍 **Bước 2: Gọi Payment API (VNPay Gateway)...**")
+            st.write("💳 Đã kết nối Cổng thanh toán VNPay Sandbox...")
+            st.write("🎟️ Mã giao dịch: `VNP13984920` - Trạng thái: **Thanh toán thành công (00)**.")
+            status2.update(label="✅ Payment Service: VNPay xác nhận thanh toán 850.000 VNĐ thành công!", state="complete", expanded=False)
+            
+        # Step 3: Shipping Service (GHN)
+        with st.status("3. Shipping Service (GHN) đang tạo vận đơn...", expanded=True) as status3:
             time.sleep(1)
-            trans_id = f"VNPAY_{int(time.time())}"
-            st.success(f"✅ Thanh toán thành công qua VNPay API! Mã GD: **{trans_id}** | Số tiền: **{price:,} VND**")
-
-            # 3. SHIPPING API
-            st.write("🔍 **Bước 3: Gọi Shipping API (Giao Hàng Nhanh - GHN)...**")
-            time.sleep(1)
-            tracking_code = f"GHN_EXPRESS_{int(time.time())}"
-            st.success(f"✅ Đã tự động tạo đơn trên hệ thống GHN API! Mã vận đơn: **{tracking_code}**")
-
-            # 4. NOTIFICATION API
-            st.write("🔍 **Bước 4: Gọi Notification API (Zalo ZNS / SMS Service)...**")
-            time.sleep(1)
-            st.success(f"📲 Đã gửi tin nhắn Zalo/SMS đến {customer_phone}: 'Đơn hàng {tracking_code} đã tạo thành công!'")
-
-            st.balloons()
-            st.subheader("🎉 QUY TRÌNH TỰ ĐỘNG HÓA HOÀN TẤT 100%!")
+            st.write("📦 Đã kết nối API Giao Hàng Nhanh (GHN Sandbox)...")
+            st.write("🚚 Mã vận đơn tạo thành công: **`GHN-VN-884920`**")
+            status3.update(label="✅ Shipping Service: GHN đã nhận đơn và cấp mã vận đơn thành công!", state="complete", expanded=False)
+            
+        st.balloons()
+        st.success("🎉 **ĐƠN HÀNG ĐÃ ĐƯỢC XỬ LÝ HOÀN HẢO QUA TOÀN BỘ INTERNET SERVICES TRÊN SƠ ĐỒ KIẾN TRÚC!**")
