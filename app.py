@@ -1247,551 +1247,146 @@ with tab1:
 
 
 # ============================================================
-# TAB 2
+# TAB 2 - Đặt hàng & kiểm soát rủi ro
 # ============================================================
 
 with tab2:
 
-    st.subheader(
-        "🚀 Đặt hàng & kiểm soát rủi ro"
-    )
+    st.subheader("🚀 Đặt hàng & kiểm soát rủi ro")
 
     # --------------------------------------------------------
     # PRODUCT
     # --------------------------------------------------------
-
-    st.markdown(
-        "### 📦 1. Thông tin đơn hàng"
-    )
+    st.markdown("### 📦 1. Thông tin đơn hàng")
 
     col1, col2 = st.columns(2)
 
     with col1:
-
-        product_name = st.text_input(
-            "Tên sản phẩm",
-            "Giày Sneaker Thể Thao Pro"
-        )
-
-        price_text = st.text_input(
-            "Giá sản phẩm (VNĐ)",
-            "1200000"
-        )
+        product_name = st.text_input("Tên sản phẩm", "Giày Sneaker Thể Thao Pro")
+        price_text = st.text_input("Giá sản phẩm (VNĐ)", "1200000")
 
     with col2:
-
-        customer_name = st.text_input(
-            "Họ tên khách hàng",
-            "Đỗ Trung Kiên"
-        )
-
-        customer_phone = st.text_input(
-            "Số điện thoại",
-            "0900000000"
-        )
-
-        customer_address = st.text_input(
-            "Địa chỉ",
-            "39 Nguyen Thi Thap"
-        )
+        customer_name = st.text_input("Họ tên khách hàng", "Đỗ Trung Kiên")
+        customer_phone = st.text_input("Số điện thoại", "0900000000")
+        customer_address = st.text_input("Địa chỉ", "39 Nguyen Thi Thap")
 
     col3, col4, col5 = st.columns(3)
 
     with col3:
-
-        province_name = st.text_input(
-            "Tỉnh / Thành phố",
-            "Ho Chi Minh"
-        )
+        province_name = st.text_input("Tỉnh / Thành phố", "Ho Chi Minh")
 
     with col4:
-
-        district_name = st.text_input(
-            "Quận / Huyện",
-            "Quan 7"
-        )
+        district_name = st.text_input("Quận / Huyện", "Quan 7")
 
     with col5:
-
-        ward_name = st.text_input(
-            "Phường / Xã",
-            "Phuong Tan Phu"
-        )
+        ward_name = st.text_input("Phường / Xã", "Phuong Tan Phu")
 
     try:
-
-        price = float(
-            price_text
-            .replace(".", "")
-            .replace(",", "")
-            .replace(" ", "")
-        )
-
+        price = float(price_text.replace(".", "").replace(",", "").replace(" ", ""))
     except:
-
         price = 0
 
-    st.info(
-        f"💰 Giá trị đơn hàng: "
-        f"**{money(price)}**"
-    )
+    st.info(f"💰 Giá trị đơn hàng: **{money(price)}**")
 
     # --------------------------------------------------------
-    # SECURITY INPUT
+    # SECURITY + RISK ENGINE
     # --------------------------------------------------------
-
     st.divider()
+    st.markdown("### 🛡️ 2. Security Check")
 
-    st.markdown(
-        "### 🛡️ 2. Security Check"
-    )
+    url_to_check = st.text_input("🌐 URL cần kiểm tra", "https://example.com")
+    ip_to_check = st.text_input("📍 IP cần kiểm tra", "8.8.8.8")
 
-    url_to_check = st.text_input(
-        "🌐 URL cần kiểm tra",
-        "https://example.com"
-    )
-
-    ip_to_check = st.text_input(
-        "📍 IP cần kiểm tra",
-        "8.8.8.8"
-    )
-
-    uploaded_file = st.file_uploader(
-        "🛡️ File cần kiểm tra bằng VirusTotal",
-        type=None
-    )
-
-    st.caption(
-        "Bản này hiện dùng VirusTotal để kiểm tra URL. "
-        "File upload sẽ được bổ sung ở bước tiếp theo nếu cần."
-    )
-
-    # --------------------------------------------------------
-    # WORKFLOW
-    # --------------------------------------------------------
-
-    if st.button(
-        "🔥 KÍCH HOẠT SECURITY + RISK ENGINE",
-        type="primary",
-        use_container_width=True
-    ):
+    if st.button("🔥 KÍCH HOẠT SECURITY + RISK ENGINE", type="primary", use_container_width=True):
 
         if price <= 0:
-
-            st.error(
-                "❌ Giá sản phẩm không hợp lệ."
-            )
-
+            st.error("❌ Giá sản phẩm không hợp lệ.")
             st.stop()
 
         if not customer_phone:
-
-            st.error(
-                "❌ Vui lòng nhập số điện thoại."
-            )
-
+            st.error("❌ Vui lòng nhập số điện thoại.")
             st.stop()
 
+        # Tạo mã đơn hàng duy nhất
         order_id = generate_order_id()
-
-        st.markdown(
-            f"## 🆔 Order ID: `{order_id}`"
-        )
+        st.markdown(f"## 🆔 Order ID: `{order_id}`")
 
         progress = st.progress(0)
 
-        # ====================================================
         # SAFE BROWSING
-        # ====================================================
-
-        with st.status(
-            "🌐 Google Safe Browsing...",
-            expanded=True
-        ) as status:
-
-            safe_result = check_safe_browsing(
-                url_to_check
-            )
-
-            if safe_result["success"]:
-
-                st.write(
-                    safe_result["message"]
-                )
-
-            else:
-
-                st.error(
-                    safe_result["message"]
-                )
-
-            status.update(
-                label="🌐 Safe Browsing hoàn tất",
-                state="complete"
-            )
-
+        safe_result = check_safe_browsing(url_to_check)
+        st.write(safe_result["message"])
         progress.progress(25)
 
-        # ====================================================
         # ABUSEIPDB
-        # ====================================================
-
-        with st.status(
-            "📍 AbuseIPDB...",
-            expanded=True
-        ) as status:
-
-            abuse_result = check_abuse_ip(
-                ip_to_check
-            )
-
-            st.write(
-                abuse_result["message"]
-            )
-
-            if abuse_result.get(
-                "confidence"
-            ) is not None:
-
-                st.write(
-                    "Abuse Confidence Score: "
-                    f"**{abuse_result['confidence']}%**"
-                )
-
-                st.write(
-                    "Reports: "
-                    f"**{abuse_result.get('total_reports', 0)}**"
-                )
-
-            status.update(
-                label="📍 AbuseIPDB hoàn tất",
-                state="complete"
-            )
-
+        abuse_result = check_abuse_ip(ip_to_check)
+        st.write(abuse_result["message"])
         progress.progress(50)
 
-        # ====================================================
         # VIRUSTOTAL
-        # ====================================================
-
-        with st.status(
-            "🛡️ VirusTotal...",
-            expanded=True
-        ) as status:
-
-            vt_result = check_virustotal_url(
-                url_to_check
-            )
-
-            st.write(
-                vt_result["message"]
-            )
-
-            if vt_result["success"]:
-
-                st.write(
-                    f"Malicious: "
-                    f"**{vt_result['malicious']}**"
-                )
-
-                st.write(
-                    f"Suspicious: "
-                    f"**{vt_result['suspicious']}**"
-                )
-
-            status.update(
-                label="🛡️ VirusTotal hoàn tất",
-                state="complete"
-            )
-
+        vt_result = check_virustotal_url(url_to_check)
+        st.write(vt_result["message"])
         progress.progress(75)
 
-        # ====================================================
         # RISK ENGINE
-        # ====================================================
+        risk_score, risk_level = calculate_risk(safe_result, abuse_result, vt_result)
+        st.metric("RISK SCORE", f"{risk_score}/100")
+        st.progress(risk_score / 100)
 
-        risk_score, risk_level = calculate_risk(
-            safe_result,
-            abuse_result,
-            vt_result
-        )
-
-        st.markdown(
-            "### 📊 3. RISK ENGINE"
-        )
-
-        r1, r2, r3, r4 = st.columns(4)
-
-        with r1:
-
-            st.metric(
-                "Safe Browsing",
-                f"+{safe_result.get('score', 0)}"
-            )
-
-        with r2:
-
-            st.metric(
-                "AbuseIPDB",
-                f"+{abuse_result.get('score', 0)}"
-            )
-
-        with r3:
-
-            st.metric(
-                "VirusTotal",
-                f"+{vt_result.get('score', 0)}"
-            )
-
-        with r4:
-
-            st.metric(
-                "RISK SCORE",
-                f"{risk_score}/100"
-            )
-
-        st.progress(
-            risk_score / 100
-        )
-
-        # ====================================================
-        # HIGH
-        # ====================================================
-
+        # Đánh giá mức rủi ro
         if risk_level == "HIGH":
-
-            st.error(
-                f"🔴 HIGH RISK — {risk_score}/100"
-            )
-
-            st.error(
-                "⛔ ĐƠN HÀNG BỊ CHẶN."
-            )
-
-            st.warning(
-                "Hệ thống phát hiện mức rủi ro cao. "
-                "Không chuyển sang VNPay."
-            )
-
+            st.error(f"🔴 HIGH RISK — {risk_score}/100")
             status = "BLOCKED"
-
-        # ====================================================
-        # MEDIUM
-        # ====================================================
-
         elif risk_level == "MEDIUM":
-
-            st.warning(
-                f"🟡 MEDIUM RISK — {risk_score}/100"
-            )
-
-            st.info(
-                "Yêu cầu xác minh OTP trước khi thanh toán."
-            )
-
-            otp = st.text_input(
-                "🔐 OTP Demo",
-                type="password"
-            )
-
-            if st.button(
-                "Xác thực OTP"
-            ):
-
-                if otp != "123456":
-
-                    st.error(
-                        "❌ OTP không chính xác."
-                    )
-
-                    status = "BLOCKED"
-
-                else:
-
-                    st.success(
-                        "✅ OTP xác minh thành công."
-                    )
-
+            st.warning(f"🟡 MEDIUM RISK — {risk_score}/100")
+            otp = st.text_input("🔐 OTP Demo", type="password")
+            if st.button("Xác thực OTP"):
+                if otp == "123456":
+                    st.success("✅ OTP xác minh thành công.")
                     status = "OTP_VERIFIED"
-
+                else:
+                    st.error("❌ OTP không chính xác.")
+                    status = "BLOCKED"
             else:
-
                 status = "WAITING_OTP"
-
-        # ====================================================
-        # LOW
-        # ====================================================
-
         else:
-
-            st.success(
-                f"🟢 LOW RISK — {risk_score}/100"
-            )
-
-            st.success(
-                "Có thể tiếp tục thanh toán VNPay."
-            )
-
+            st.success(f"🟢 LOW RISK — {risk_score}/100")
             status = "APPROVED"
 
-
-        # ====================================================
         # SAVE ORDER
-        # ====================================================
-
-        st.session_state.orders[
-            order_id
-        ] = {
-
-            "order_id":
-                order_id,
-
-            "created_at":
-                datetime.now().strftime(
-                    "%d/%m/%Y %H:%M:%S"
-                ),
-
-            "customer":
-                customer_name,
-
-            "phone":
-                customer_phone,
-
-            "product":
-                product_name,
-
-            "amount":
-                price,
-
-            "risk_score":
-                risk_score,
-
-            "risk_level":
-                risk_level,
-
-            "status":
-                status
+        order_data = {
+            "customer_name": customer_name,
+            "customer_phone": customer_phone,
+            "customer_address": customer_address,
+            "ward_name": ward_name,
+            "district_name": district_name,
+            "province_name": province_name,
+            "product_name": product_name,
+            "amount": price,
+            "weight": 500,
+            "ghn_created": False,
+            "ghn_order_code": None,
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            "status": status
         }
 
+        save_pending_order(order_id, order_data)
+        st.session_state.orders[order_id] = order_data
+        st.success("✅ Đã lưu thông tin đơn hàng.")
 
-      
-        # ====================================================
         # PAYMENT
-        # ====================================================
-        if status in [
-            "APPROVED",
-            "OTP_VERIFIED"
-        ]:
-        
+        if status in ["APPROVED", "OTP_VERIFIED"]:
             st.divider()
-        
-            st.markdown(
-                "### 💳 4. VNPay Sandbox"
-            )
+            st.markdown("### 💳 3. VNPay Sandbox")
 
-    # ====================================================
-    # LƯU THÔNG TIN ĐƠN HÀNG
-    # ====================================================
-
-    pending_order_data = {
-
-        "customer_name":
-            customer_name,
-
-        "customer_phone":
-            customer_phone,
-
-        "customer_address":
-            customer_address,
-
-        "ward_name":
-            ward_name,
-
-        "district_name":
-            district_name,
-
-        "province_name":
-            province_name,
-
-        "product_name":
-            product_name,
-
-        "amount":
-            price,
-
-        "weight":
-            500,
-
-        "ghn_created":
-            False,
-
-        "ghn_order_code":
-            None
-    }
-
-    if save_pending_order(
-        order_id,
-        pending_order_data
-    ):
-
-        st.success(
-            "✅ Đã lưu thông tin đơn hàng."
-        )
-
-    else:
-
-        st.error(
-            "❌ Không thể lưu thông tin đơn hàng."
-        )
-
-
-    # ====================================================
-    # STREAMLIT RETURN URL
-    # ====================================================
-
-    return_url = (
-        "https://"
-        + st.context.headers.get(
-            "Host",
-            ""
-        )
-    )
-
-
-    # ====================================================
-    # TẠO URL VNPAY
-    # ====================================================
-
-    try:
-
-        payment_url = build_vnpay_url(
-            order_id,
-            price,
-            f"Thanh toan don hang {order_id}",
-            return_url
-        )
-
-        st.success(
-            "✅ Đã tạo URL thanh toán VNPay."
-        )
-
-        st.link_button(
-            "💳 THANH TOÁN QUA VNPAY",
-            payment_url,
-            use_container_width=True
-        )
-
-        st.info(
-            "Sau khi thanh toán thành công, "
-            "VNPay sẽ redirect về website và "
-            "hệ thống tự động tạo đơn GHN."
-        )
-
-    except Exception as e:
-
-        st.error(
-            f"❌ Không tạo được VNPay URL: {e}"
-        )
+            return_url = "https://" + st.context.headers.get("Host", "")
+            try:
+                payment_url = build_vnpay_url(order_id, price, f"Thanh toan don hang {order_id}", return_url)
+                st.success("✅ Đã tạo URL thanh toán VNPay.")
+                st.link_button("💳 THANH TOÁN QUA VNPAY", payment_url, use_container_width=True)
+            except Exception as e:
+                st.error(f"❌ Không tạo được VNPay URL: {e}")
 
 # ============================================================
 # TAB 3
