@@ -1085,50 +1085,61 @@ with tab1:
         {"name": "Trang sức vàng", "price": 30000000, "risk_score": 80, "risk_level": "HIGH"}
     ]
     
-    with tab2:
-        st.subheader("🚀 Đặt hàng & Security")
-    
-        customer_name = st.text_input("Họ tên khách hàng", "Đỗ Trung Kiên")
-        customer_phone = st.text_input("Số điện thoại", "0900000000")
-        customer_address = st.text_input("Địa chỉ", "39 Nguyen Thi Thap")
-    
-        product_choice = st.selectbox("Chọn sản phẩm", [p["name"] for p in PRODUCTS])
-        selected_product = next(p for p in PRODUCTS if p["name"] == product_choice)
-    
-        st.info(f"💰 Giá trị đơn hàng: **{money(selected_product['price'])}**")
-    
-        if st.button("🔥 Đặt hàng", type="primary", use_container_width=True):
-            order_id = generate_order_id()
-            st.markdown(f"## 🆔 Order ID: `{order_id}`")
-    
-            order_data = {
-                "created_at": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-                "customer_name": customer_name,
-                "customer_phone": customer_phone,
-                "customer_address": customer_address,
-                "product_name": selected_product["name"],
-                "amount": selected_product["price"],
-                "ward_name": "Phường Tân Phú",
-                "district_name": "Quận 7",
-                "province_name": "Hồ Chí Minh",
-                "ghn_created": False
-            }
-    
+   with tab2:
+    st.subheader("🚀 Đặt hàng & Security")
+
+    # Nhập thông tin khách hàng
+    customer_name = st.text_input("Họ tên khách hàng", "Đỗ Trung Kiên")
+    customer_phone = st.text_input("Số điện thoại", "0900000000")
+    customer_address = st.text_input("Địa chỉ", "39 Nguyen Thi Thap")
+
+    # Chọn sản phẩm
+    product_choice = st.selectbox("Chọn sản phẩm", [p["name"] for p in PRODUCTS])
+    selected_product = next(p for p in PRODUCTS if p["name"] == product_choice)
+
+    st.info(f"💰 Giá trị đơn hàng: **{money(selected_product['price'])}**")
+
+    # Nút đặt hàng
+    if st.button("🔥 Đặt hàng", type="primary", use_container_width=True):
+        order_id = generate_order_id()
+        st.markdown(f"## 🆔 Order ID: `{order_id}`")
+
+        # Chuẩn bị dữ liệu đơn hàng
+        order_data = {
+            "created_at": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+            "customer_name": customer_name,
+            "customer_phone": customer_phone,
+            "customer_address": customer_address,
+            "product_name": selected_product["name"],
+            "amount": selected_product["price"],
+            "ward_name": "Phường Tân Phú",
+            "district_name": "Quận 7",
+            "province_name": "Hồ Chí Minh",
+            "ghn_created": False
+        }
+
+        try:
             # 🔑 Lưu đơn hàng vào file trước khi chuyển sang VNPay
             save_pending_order(order_id, order_data)
-    
+
             # Lưu vào session để hiển thị lịch sử
             st.session_state.orders[order_id] = order_data
-    
+
             st.success("✅ Đã lưu thông tin đơn hàng.")
-    
+
             # Tạo URL thanh toán VNPay
             return_url = f"https://{st.context.headers.get('Host', '')}"
-            payment_url = build_vnpay_url(order_id, selected_product["price"], f"Thanh toan don hang {order_id}", return_url)
+            payment_url = build_vnpay_url(
+                order_id,
+                selected_product["price"],
+                f"Thanh toan don hang {order_id}",
+                return_url
+            )
+
             st.link_button("💳 THANH TOÁN QUA VNPAY", payment_url, use_container_width=True)
-    
-            except Exception as e:
-                st.error(f"❌ Không tạo được VNPay URL: {e}")
+
+        except Exception as e:
+            st.error(f"❌ Lỗi khi lưu đơn hàng: {str(e)}")
 
 # ============================================================
 # TAB 3 - Lịch sử đơn hàng (cập nhật sau thanh toán)
