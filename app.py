@@ -133,6 +133,11 @@ def normalize_ip(ip):
 # ============================================================
 # 6. GEMINI
 # ============================================================
+PRODUCTS = [
+    {"name": "Điện thoại thông minh", "price": 5000000},
+    {"name": "Laptop gaming", "price": 20000000},
+    {"name": "Trang sức vàng", "price": 30000000}
+]
 
 def gemini_chat(question):
 
@@ -140,18 +145,14 @@ def gemini_chat(question):
         return "❌ Chưa cấu hình GEMINI_API_KEY."
 
     try:
-
-        client = genai.Client(
-            api_key=GEMINI_API_KEY
-        )
+        client = genai.Client(api_key=GEMINI_API_KEY)
 
         history = ""
-
         for message in st.session_state.chat_messages[-8:]:
-            history += (
-                f"{message['role']}: "
-                f"{message['content']}\n"
-            )
+            history += f"{message['role']}: {message['content']}\n"
+
+        # Lấy danh sách 3 sản phẩm đã thiết lập kèm giá
+        product_list = "\n".join([f"- {p['name']} (giá: {money(p['price'])})" for p in PRODUCTS[:3]])
 
         prompt = f"""
 Bạn là trợ lý bán hàng của một sàn thương mại điện tử.
@@ -160,6 +161,8 @@ Hãy:
 - Tư vấn sản phẩm.
 - So sánh sản phẩm.
 - Giải thích ưu nhược điểm.
+- Luôn gợi ý thêm 3 sản phẩm sau với giá chính xác:
+{product_list}
 - Trả lời bằng tiếng Việt.
 - Ngắn gọn, dễ hiểu.
 - Không tự bịa giá sản phẩm.
@@ -180,7 +183,6 @@ Câu hỏi:
 
     except Exception as e:
         return f"❌ Gemini API lỗi: {str(e)}"
-
 
 # ============================================================
 # 7. GOOGLE SAFE BROWSING
