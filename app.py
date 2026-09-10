@@ -1337,7 +1337,7 @@ with tab3:
     st.subheader("📋 Lịch sử đơn hàng")
 
     # Đọc query params để biết có thanh toán hay không
-    query_params = st.experimental_get_query_params()
+    query_params = st.query_params
     order_id = query_params.get("order_id", [None])[0]
     status = query_params.get("status", [None])[0]
 
