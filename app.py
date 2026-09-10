@@ -3,82 +3,53 @@ import time
 import os
 from google import genai
 
-# 1. Cấu hình trang chuyên nghiệp
+# Cấu hình trang Web
 st.set_page_config(
-    page_title="E-Commerce Internet Services Enterprise Demo",
+    page_title="E-Commerce Internet Services - Interactive Flow",
     page_icon="🛍️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# 2. Custom CSS nâng cấp Giao diện
-st.markdown("""
-    <style>
-    .main-header { font-size: 2.2rem; font-weight: 700; color: #1E88E5; margin-bottom: 0px; }
-    .sub-header { font-size: 1rem; color: #555555; margin-bottom: 20px; }
-    .card { background-color: #f8f9fa; border-radius: 8px; padding: 15px; border-left: 5px solid #1E88E5; margin-bottom: 15px; }
-    .stButton>button { border-radius: 6px; font-weight: 600; }
-    </style>
-""", unsafe_allow_html=True)
+# Tiêu đề ứng dụng
+st.title("🛍️ Sàn Thương Mại Điện Tử - Demo Tích Hợp Internet Services")
+st.caption("Quy trình tự động hóa tích hợp AI, Kiểm tra An ninh 3 Lớp, Phân loại Risk Score, Thanh toán & Vận chuyển")
 
-# 3. Sidebar Quản lý API Keys & Hệ thống
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/3081/3081559.png", width=70)
-    st.title("⚙️ System Gateway Settings")
-    st.caption("Quản lý kết nối các Internet Services API")
-    
-    env_gemini_key = st.secrets.get("GEMINI_API_KEY", "")
-    gemini_key_input = st.text_input("🔑 Gemini API Key:", value=env_gemini_key, type="password")
-    
-    st.divider()
-    st.markdown("### 📊 Trạng Thái Services")
-    st.success("🟢 Gemini AI: Ready")
-    st.success("🟢 Google Safe Browsing: Connected")
-    st.success("🟢 AbuseIPDB: Connected")
-    st.success("🟢 VirusTotal: Connected")
-    st.success("🟢 VNPay Sandbox: Online")
-    st.success("🟢 GHN Sandbox: Online")
+# Lấy các API Keys từ Streamlit Secrets
+GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
-GEMINI_API_KEY = gemini_key_input if gemini_key_input else env_gemini_key
-
-# 4. Header Chính
-st.markdown('<div class="main-header">🛍️ Sàn Thương Mại Điện Tử Enterprise</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Hệ thống Demo tích hợp 6 Internet Services tập trung qua API Gateway</div>', unsafe_allow_html=True)
-
-# 5. Khởi tạo 3 Tabs
-tab1, tab2, tab3 = st.tabs([
-    "💬 1. AI Service (Gemini Chatbot)", 
-    "🛡️ 2. Triple-Layer Security Services", 
-    "🚀 3. Automated Order Workflow"
+# Khởi tạo các Tab theo đúng Quy trình
+tab1, tab2 = st.tabs([
+    "💬 1. Tư Vấn Khách Hàng (Gemini AI)", 
+    "🚀 2. Quy Trình Đặt Hàng & Kiểm Soát Rủi Ro (Full Workflow)"
 ])
 
 # ==========================================
-# TAB 1: AI SERVICE (MULTI-TURN CHATBOT)
+# BƯỚC 1 & 2: KHÁCH HÀNG & TƯ VẤN KHÁCH HÀNG (GEMINI AI)
 # ==========================================
 with tab1:
-    st.subheader("🤖 AI Service: Google Gemini AI Assistant")
-    st.info("💡 Trợ lý AI có khả năng duy trì ngữ cảnh trò chuyện đa luồng (Multi-turn Chat) để tư vấn sản phẩm.")
+    st.subheader("🤖 Tư Vấn Khách Hàng - Google Gemini AI")
+    st.markdown("Chức năng: *Hỗ trợ khách hàng tìm kiếm và chọn lựa sản phẩm trước khi đặt hàng*")
     
     if "chat_messages" not in st.session_state:
         st.session_state.chat_messages = [
-            {"role": "assistant", "content": "Xin chào! Tôi là Trợ lý AI tư vấn bán hàng. Bạn đang tìm kiếm sản phẩm gì hôm nay?"}
+            {"role": "assistant", "content": "Xin chào! Tôi là trợ lý AI. Bạn đang muốn tìm sản phẩm nào hôm nay?"}
         ]
 
     for msg in st.session_state.chat_messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    if prompt := st.chat_input("Nhập câu hỏi tư vấn (ví dụ: Gợi ý cho mình tai nghe bluetooth chơi game dưới 1 triệu)..."):
+    if prompt := st.chat_input("Hỏi AI tư vấn sản phẩm..."):
         st.session_state.chat_messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
         if GEMINI_API_KEY:
             with st.chat_message("assistant"):
-                with st.spinner("Gemini AI đang phân tích dữ liệu..."):
+                with st.spinner("Gemini AI đang tư vấn..."):
                     try:
                         client = genai.Client(api_key=GEMINI_API_KEY)
-                        context = "Bạn là trợ lý tư vấn bán hàng TMĐT chuyên nghiệp, thân thiện và tư vấn ngắn gọn. Lịch sử hội thoại:\n"
+                        context = "Bạn là trợ lý tư vấn bán hàng TMĐT. Trả lời thân thiện, ngắn gọn dưới 3 câu. Lịch sử:\n"
                         for m in st.session_state.chat_messages[-6:]:
                             context += f"{m['role']}: {m['content']}\n"
                         
@@ -90,85 +61,126 @@ with tab1:
                         st.markdown(answer)
                         st.session_state.chat_messages.append({"role": "assistant", "content": answer})
                     except Exception as e:
-                        st.error(f"Lỗi kết nối Gemini API: {e}")
+                        st.error(f"Lỗi gọi Gemini API: {e}")
         else:
-            st.warning("⚠️ Chưa tìm thấy GEMINI_API_KEY. Vui lòng nhập Key ở thanh Sidebar bên trái!")
+            st.warning("⚠️ Chưa cấu hình GEMINI_API_KEY trong Secrets!")
 
 # ==========================================
-# TAB 2: TRIPLE-LAYER SECURITY SERVICES
+# BƯỚC 3 -> 12: ĐẶT HÀNG & MÔ HÌNH XỬ LÝ RỦI RO THEO SƠ ĐỒ
 # ==========================================
 with tab2:
-    st.subheader("🛡️ Security Services: Kiểm Tra An Ninh Đa Tầng")
-    st.caption("Xử lý xác thực an toàn thông qua 3 dịch vụ chuyên biệt trước khi khởi tạo giao dịch tài chính.")
+    st.subheader("🛒 Quy Trình Đặt Hàng & Kiểm Soát Rủi Ro Phân Nhánh")
     
-    col1, col2, col3 = st.columns(3)
-    
+    st.markdown("### 📦 1. Khách hàng chọn sản phẩm & Đặt hàng")
+    col1, col2 = st.columns(2)
     with col1:
-        st.markdown("<div class='card'><h4>1. Google Safe Browsing</h4>Kiểm tra URL chống Phishing/Malware.</div>", unsafe_allow_html=True)
-        test_url = st.text_input("URL Checkout:", "https://my-store.com/checkout")
-        if st.button("🔍 Quét URL", use_container_width=True):
-            with st.spinner("Scanning URL Database..."):
-                time.sleep(0.8)
-                st.success(f"✅ **Safe Browsing**: URL `{test_url}` Đạt chuẩn an toàn!")
-
+        product_name = st.text_input("Tên sản phẩm:", "Giày Snaker Thể Thao Pro")
+        product_price = st.text_input("Giá tiền:", "1.200.000 VNĐ")
     with col2:
-        st.markdown("<div class='card'><h4>2. AbuseIPDB</h4>Đánh giá chỉ số rủi ro IP.</div>", unsafe_allow_html=True)
-        test_ip = st.text_input("Địa chỉ IP:", "113.161.72.11")
-        if st.button("🔍 Kiểm Tra IP", use_container_width=True):
-            with st.spinner("Analyzing IP Reputation..."):
-                time.sleep(0.8)
-                st.info(f"📊 **AbuseIPDB**: Risk Confidence Score = **0%** (Clean IP).")
+        customer_name = st.text_input("Họ tên khách hàng:", "Đỗ Trung Kiên")
+        customer_address = st.text_input("Địa chỉ giao hàng:", "TP. Hồ Chí Minh")
 
-    with col3:
-        st.markdown("<div class='card'><h4>3. VirusTotal</h4>Quét mã độc & hành vi Payload.</div>", unsafe_allow_html=True)
-        test_file = st.selectbox("Payload / File đính kèm:", ["order_payload.json", "receipt_verification.png"])
-        if st.button("🔍 Quét Payload", use_container_width=True):
-            with st.spinner("Analyzing File Sandbox..."):
-                time.sleep(0.8)
-                st.success(f"🛡️ **VirusTotal**: 0/72 Engines flagged `{test_file}`. Clean!")
-
-# ==========================================
-# TAB 3: AUTOMATED WORKFLOW VIA API GATEWAY
-# ==========================================
-with tab3:
-    st.subheader("🚀 Luồng Xử Lý Đặt Hàng Tự Động Qua API Gateway")
+    st.divider()
+    st.markdown("### 🛡️ 2. Mô phỏng tham số Kiểm tra An ninh (Dành cho Demo)")
+    st.caption("Thay đổi các giá trị bên dưới để test các nhánh Rủi ro Thấp / Trung bình / Cao theo sơ đồ:")
     
-    st.markdown("### 📋 Thông Tin Đơn Hàng Thử Nghiệm")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.text_input("📦 Sản phẩm:", "Tai nghe Bluetooth Wireless G1", disabled=True)
-    with c2:
-        st.text_input("💰 Tổng thanh toán:", "850.000 VNĐ", disabled=True)
-    with c3:
-        st.text_input("👤 Người nhận:", "Đỗ Trung Kiên (TP. Hồ Chí Minh)", disabled=True)
+    col_sec1, col_sec2, col_sec3 = st.columns(3)
+    with col_sec1:
+        input_url = st.selectbox("Safe Browsing (Quét URL):", ["URL An toàn (Clean)", "URL Độc hại / Phishing (Danger)"])
+    with col_sec2:
+        input_ip = st.selectbox("AbuseIPDB (Mức độ rủi ro IP):", ["IP Sạch (Risk 0%)", "IP Nghi vấn (Risk 45%)", "IP Spam/Tấn công (Risk 90%)"])
+    with col_sec3:
+        input_file = st.selectbox("VirusTotal (Quét File/Mã độc):", ["File Sạch (0/72 Clean)", "Phát hiện Mã độc (Malware Flagged)"])
 
-    if st.button("🔥 KÍCH HOẠT QUY TRÌNH ĐẶT HÀNG TỰ ĐỘNG", type="primary", use_container_width=True):
+    if st.button("🔥 KÍCH HOẠT QUY TRÌNH XỬ LÝ ĐƠN HÀNG", type="primary"):
         st.divider()
-        st.markdown("### 🔄 Tiến Trình Điều Phối API Gateway:")
-        
-        # Step 1: Security
-        with st.status("🔒 Bước 1: API Gateway gọi Security Services (Triple-Check)...", expanded=True) as status1:
+        st.markdown("## 🔄 LUỒNG XỬ LÝ TỰ ĐỘNG THEO SƠ ĐỒ KIẾN TRÚC")
+
+        # ----------------------------------------------------
+        # BƯỚC: SECURITY CHECK (Safe Browsing, AbuseIPDB, VirusTotal)
+        # ----------------------------------------------------
+        with st.status("🔍 1. Đang thực hiện Kiểm tra An ninh 3 lớp...", expanded=True) as status_sec:
             time.sleep(0.6)
-            st.write("🟢 **Google Safe Browsing**: URL checkout đạt chứng chỉ an toàn.")
+            st.write(f"🌐 **Safe Browsing**: {input_url}")
+            time.sleep(0.6)
+            st.write(f"📍 **AbuseIPDB**: {input_ip}")
+            time.sleep(0.6)
+            st.write(f"🛡️ **VirusTotal**: {input_file}")
+            status_sec.update(label="✅ Hoàn tất kiểm tra 3 lớp an ninh!", state="complete", expanded=False)
+
+        # ----------------------------------------------------
+        # BƯỚC: RISK SCORE (Tính toán điểm rủi ro)
+        # ----------------------------------------------------
+        risk_level = "LOW"
+        if "Phishing" in input_url or "90%" in input_ip or "Malware" in input_file:
+            risk_level = "HIGH"
+        elif "45%" in input_ip:
+            risk_level = "MEDIUM"
+
+        st.markdown("---")
+        st.markdown("### 📊 RISK SCORE - DÙNG NGUYÊN TẮC PHÂN NHÁNH")
+
+        # NHÁNH 1: RỦI RO CAO (HIGH RISK) -> CHẶN ĐƠN HÀNG
+        if risk_level == "HIGH":
+            st.error("🔴 **MỨC RỦI RO: CAO (High Risk Score)**")
+            st.warning("🚨 Phát hiện mối đe dọa an ninh nghiêm trọng (URL độc hại, IP nằm trong danh sách đen hoặc có mã độc)!")
             time.sleep(0.5)
-            st.write("🟢 **AbuseIPDB**: IP người dùng đạt điểm tin cậy cao (Risk Score 0%).")
-            time.sleep(0.5)
-            st.write("🟢 **VirusTotal**: Dữ liệu Payload đơn hàng an toàn tuyệt đối.")
-            status1.update(label="✅ Bước 1: An ninh hoàn tất - Đã vượt qua 3 lớp Security!", state="complete", expanded=False)
+            st.error("⛔ **KẾT QUẢ: CHẶN ĐƠN HÀNG!** Hệ thống đã hủy giao dịch để bảo vệ an toàn.")
+
+        # NHÁNH 2: RỦI RO TRUNG BÌNH (MEDIUM RISK) -> CẢNH BÁO -> XÁC MINH
+        elif risk_level == "MEDIUM":
+            st.warning("🟡 **MỨC RỦI RO: TRUNG BÌNH (Medium Risk Score)**")
+            st.info("⚠️ **CẢNH BÁO**: Yêu cầu xác minh danh tính khách hàng trước khi cho phép thanh toán.")
             
-        # Step 2: Payment
-        with st.status("💳 Bước 2: API Gateway gọi Payment Service (VNPay Sandbox)...", expanded=True) as status2:
-            time.sleep(0.8)
-            st.write("🔗 Tạo yêu cầu thanh toán mã hóa HMAC-SHA512...")
-            st.write("🎟️ Mã giao dịch VNPay: `VNP13984920` | Mã phản hồi: `00` (Thành công)")
-            status2.update(label="✅ Bước 2: VNPay xác nhận thanh toán 850.000 VNĐ thành công!", state="complete", expanded=False)
+            st.markdown("#### 🔐 XÁC MINH KHÁCH HÀNG (OTP / Captcha)")
+            user_otp = st.text_input("Nhập mã OTP xác minh gửi về điện thoại (Thử nhập '123456'):", key="otp_input")
             
-        # Step 3: Shipping
-        with st.status("📦 Bước 3: API Gateway gọi Shipping Service (GHN Sandbox)...", expanded=True) as status3:
-            time.sleep(0.8)
-            st.write("🔗 Đã kết nối API Giao Hàng Nhanh (`dev-online-gateway.ghn.vn`)...")
-            st.write("🚚 Mã vận đơn khởi tạo thành công: **`GHN-VN-884920`**")
-            status3.update(label="✅ Bước 3: GHN đã nhận đơn và xuất mã vận đơn thành công!", state="complete", expanded=False)
+            if st.button("Xác thực OTP"):
+                if user_otp == "123456":
+                    st.success("✅ **Xác minh đạt!** Cho phép tiếp tục luồng thanh toán.")
+                    
+                    # Tiến hành Thanh toán -> Vận chuyển -> Thông báo
+                    with st.spinner("💳 1. Kết nối VNPay..."):
+                        time.sleep(1)
+                        st.success("💳 **Thanh toán VNPay**: Giao dịch thành công (Mã: VNP99823)")
+                    with st.spinner("🚚 2. Kết nối GHN..."):
+                        time.sleep(1)
+                        st.success("🚚 **Vận chuyển GHN**: Khởi tạo đơn hàng thành công (Mã: GHN-VN-99823)")
+                    with st.spinner("🔔 3. Kết nối Notification API..."):
+                        time.sleep(1)
+                        st.success("🔔 **Thông báo (Twilio/Zalo ZNS)**: Đã gửi SMS xác nhận đơn hàng thành công đến khách hàng!")
+                    st.balloons()
+                else:
+                    st.error("❌ **Xác minh không đạt!** Mã OTP sai.")
+                    st.error("⛔ **KẾT QUẢ: CHẶN ĐƠN HÀNG!**")
+
+        # NHÁNH 3: RỦI RO THẤP (LOW RISK) -> THANH TOÁN -> VẬN CHUYỂN -> THÔNG BÁO
+        else:
+            st.success("🟢 **MỨC RỦI RO: THẤP (Low Risk Score)**")
+            st.markdown("Chuyển thẳng sang luồng xử lý tự động:")
             
-        st.balloons()
-        st.success("🎉 **ĐƠN HÀNG XỬ LÝ HOÀN HẢO! CẢ 6 INTERNET SERVICES ĐÃ ĐƯỢC KÍCH HOẠT VÀ PHẢN HỒI THÀNH CÔNG.**")
+            col_a, col_b, col_c = st.columns(3)
+            
+            with col_a:
+                with st.status("💳 THANH TOÁN (VNPay)", expanded=True):
+                    time.sleep(0.8)
+                    st.write("Cổng thanh toán: VNPay Sandbox")
+                    st.write("Số tiền: 1.200.000 VNĐ")
+                    st.write("Trạng thái: **Thành công (00)**")
+            
+            with col_b:
+                with st.status("🚚 VẬN CHUYỂN (GHN)", expanded=True):
+                    time.sleep(0.8)
+                    st.write("Đơn vị: Giao Hàng Nhanh")
+                    st.write("Mã vận đơn: `GHN-VN-102938`")
+                    st.write("Trạng thái: **Đã tiếp nhận**")
+
+            with col_c:
+                with st.status("🔔 THÔNG BÁO (Twilio/Zalo)", expanded=True):
+                    time.sleep(0.8)
+                    st.write("Kênh gửi: Twilio SMS / Zalo ZNS")
+                    st.write("Nội dung: *Đơn hàng đã được xác nhận*")
+                    st.write("Trạng thái: **Đã gửi**")
+
+            st.balloons()
+            st.success("🎉 **ĐƠN HÀNG HOÀN TẤT THÀNH CÔNG THEO ĐÚNG TIẾN TRÌNH RỦI RO THẤP!**")
