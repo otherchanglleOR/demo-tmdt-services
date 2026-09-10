@@ -1425,7 +1425,7 @@ with tab3:
 
                 st.write(
                     "📦 Sản phẩm:",
-                    order["product"]
+                    order["product_name"]
                 )
 
                 st.write(
