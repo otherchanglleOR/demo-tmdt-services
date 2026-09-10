@@ -1389,66 +1389,23 @@ with tab2:
                 st.error(f"❌ Không tạo được VNPay URL: {e}")
 
 # ============================================================
-# TAB 3
+# TAB 3 - Lịch sử đơn hàng
 # ============================================================
 
 with tab3:
-
-    st.subheader(
-        "📋 Lịch sử đơn hàng"
-    )
+    st.subheader("📋 Lịch sử đơn hàng")
 
     if not st.session_state.orders:
-
-        st.info(
-            "Chưa có đơn hàng."
-        )
-
+        st.info("Chưa có đơn hàng nào.")
     else:
-
-        for order_id, order in reversed(
-            list(
-                st.session_state.orders.items()
-            )
-        ):
-
-            with st.expander(
-                f"{order_id} — "
-                f"{order['risk_level']} — "
-                f"{money(order['amount'])}"
-            ):
-
-                st.write(
-                    "👤 Khách hàng:",
-                    order["customer_name"]
-                )
-
-                st.write(
-                    "📦 Sản phẩm:",
-                    order["product_name"]
-                )
-
-                st.write(
-                    "💰 Giá:",
-                    money(order["amount"])
-                )
-
-                st.write(
-                    "📊 Risk Score:",
-                    f"{order['risk_score']}/100"
-                )
-
-                st.write(
-                    "🚦 Risk Level:",
-                    order["risk_level"]
-                )
-
-                st.write(
-                    "📌 Status:",
-                    order["status"]
-                )
-
-                st.write(
-                    "🕒 Thời gian:",
-                    order["created_at"]
-                )
+        for oid, order in st.session_state.orders.items():
+            with st.expander(f"🆔 Đơn hàng {oid}"):
+                st.write(f"📅 Ngày tạo: {order.get('created_at', 'N/A')}")
+                st.write(f"👤 Khách hàng: {order.get('customer_name', 'N/A')}")
+                st.write(f"📞 SĐT: {order.get('phone', 'N/A')}")
+                st.write(f"📦 Sản phẩm: {order.get('product_name', order.get('product', 'N/A'))}")
+                st.write(f"💰 Giá trị: {money(order.get('amount', 0))}")
+                st.write(f"📊 Risk Score: {order.get('risk_score', 0)} ({order.get('risk_level', 'N/A')})")
+                st.write(f"📌 Trạng thái: {order.get('status', 'N/A')}")
+                if order.get("ghn_order_code"):
+                    st.write(f"🚚 Mã vận đơn GHN: {order['ghn_order_code']}")
