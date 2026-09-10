@@ -906,7 +906,8 @@ def process_vnpay_return_and_ghn():
             st.success(f"📦 Mã vận đơn GHN: **{pending_order.get('ghn_order_code')}**")
 
         # 🔑 Sau khi hiển thị xong, xóa query params để reload không còn thông báo
-        st.experimental_set_query_params()
+        st.query_params.clear()
+
 
     else:
         st.warning(f"⚠️ Thanh toán VNPay không thành công. Mã lỗi: {response_code}")
