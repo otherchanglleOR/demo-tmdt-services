@@ -1144,27 +1144,30 @@ with tab2:
             st.error(f"❌ Lỗi khi lưu đơn hàng: {str(e)}")
 
 # ============================================================
-# TAB 3 - Lịch sử đơn hàng (cập nhật sau thanh toán)
+# TAB 3 - Lịch sử đơn hàng
 # ============================================================
 
 with tab3:
     st.subheader("📋 Lịch sử đơn hàng")
 
-    # Đọc query params
-    query_params = st.query_params
-    order_id = query_params.get("order_id", None)
-    status = query_params.get("status", None)
+    # Nếu có đơn hàng trong session thì hiển thị
+    if st.session_state.orders:
+        for oid, odata in st.session_state.orders.items():
+            st.markdown(f"### 🆔 Đơn hàng: `{oid}`")
+            st.write(f"- Khách hàng: {odata['customer_name']}")
+            st.write(f"- SĐT: {odata['customer_phone']}")
+            st.write(f"- Địa chỉ: {odata['customer_address']}")
+            st.write(f"- Sản phẩm: {odata['product_name']}")
+            st.write(f"- Giá trị: {money(odata['amount'])}")
+            st.write(f"- Trạng thái GHN: {odata.get('shipping_status','Chưa tạo')}")
 
-    if order_id and status == "paid":
-        # Chỉ hiển thị thông báo khi có thanh toán thành công
-        if order_id in st.session_state.orders:
-            st.session_state.orders[order_id]["status"] = "PAID"
-            st.success(f"🎉 Thanh toán VNPay thành công cho đơn hàng {order_id}!")
-            if st.session_state.orders[order_id].get("ghn_order_code"):
-                st.info("🚚 Đơn GHN đã được tạo trước đó.")
-                st.success(f"📦 Mã vận đơn GHN: {st.session_state.orders[order_id]['ghn_order_code']}")
+            if odata.get("ghn_order_code"):
+                st.success(f"📦 Mã vận đơn GHN: **{odata['ghn_order_code']}**")
+
+            st.divider()
     else:
-        # Nếu reload mà không có thanh toán thì reset session và KHÔNG hiển thị thông báo
-        st.session_state.orders.clear()
-        st.info("Chưa có đơn hàng nào.")
+        st.info("Chưa có đơn hàng nào trong lịch sử.")
+
+    # Sau khi xử lý VNPay xong, query params đã bị clear trong process_vnpay_return_and_ghn()
+    # nên khi reload lại sẽ không còn thông báo cũ nữa
 
