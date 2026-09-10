@@ -806,7 +806,7 @@ def process_vnpay_return_and_ghn():
         else:
             st.error("Chữ ký VNPay không hợp lệ!")
 
-        ```python
+     
 # ==============================================
 # THÔNG TIN SHOP + KHÁCH HÀNG + HÀNG HÓA
 # ==============================================
@@ -927,7 +927,7 @@ except Exception as e:
         "message":
             f"Lỗi GHN: {str(e)}"
     }
-```
+
 
 
 
