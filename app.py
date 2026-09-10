@@ -8,26 +8,7 @@ import uuid
 from datetime import datetime, timedelta
 from google import genai
 
-# Danh sách sản phẩm cố định
-PRODUCTS = [
-    {
-        "name": "Điện thoại thông minh",
-        "price": 5000000,
-        "risk_score": 20,
-        "risk_level": "Thấp"
-    },
-    {
-        "name": "Laptop gaming",
-        "price": 20000000,
-        "risk_score": 50,
-        "risk_level": "Trung bình"
-    },
-    {
-        "name": "Trang sức vàng",
-        "price": 30000000,
-        "risk_score": 80,
-        "risk_level": "Cao"
-    }
+
 ]
 # ============================================================
 # 1. PAGE CONFIG
@@ -1267,8 +1248,30 @@ with tab1:
 
 
 # ============================================================
-# TAB 2 - Đặt hàng & kiểm soát rủi ro (tự động Security Check)
+# TAB 2 - Đặt hàng & kiểm soát rủi ro (chọn sản phẩm cố định)
 # ============================================================
+
+# Danh sách sản phẩm cố định
+PRODUCTS = [
+    {
+        "name": "Điện thoại thông minh",
+        "price": 5000000,
+        "risk_score": 20,
+        "risk_level": "LOW"
+    },
+    {
+        "name": "Laptop gaming",
+        "price": 20000000,
+        "risk_score": 50,
+        "risk_level": "MEDIUM"
+    },
+    {
+        "name": "Trang sức vàng",
+        "price": 30000000,
+        "risk_score": 80,
+        "risk_level": "HIGH"
+    }
+]
 
 with tab2:
     st.subheader("🚀 Đặt hàng & kiểm soát rủi ro")
@@ -1278,70 +1281,34 @@ with tab2:
     # --------------------------------------------------------
     st.markdown("### 📦 Thông tin đơn hàng")
 
-    col1, col2 = st.columns(2)
+    customer_name = st.text_input("Họ tên khách hàng", "Đỗ Trung Kiên")
+    customer_phone = st.text_input("Số điện thoại", "0900000000")
+    customer_address = st.text_input("Địa chỉ", "39 Nguyen Thi Thap")
 
-    with col1:
-        product_name = st.text_input("Tên sản phẩm", "Giày Sneaker Thể Thao Pro")
-        price_text = st.text_input("Giá sản phẩm (VNĐ)", "1200000")
+    # Chọn sản phẩm từ danh sách cố định
+    product_choice = st.selectbox("Chọn sản phẩm", [p["name"] for p in PRODUCTS])
+    selected_product = next(p for p in PRODUCTS if p["name"] == product_choice)
 
-    with col2:
-        customer_name = st.text_input("Họ tên khách hàng", "Đỗ Trung Kiên")
-        customer_phone = st.text_input("Số điện thoại", "0900000000")
-        customer_address = st.text_input("Địa chỉ", "39 Nguyen Thi Thap")
-
-    col3, col4, col5 = st.columns(3)
-
-    with col3:
-        province_name = st.text_input("Tỉnh / Thành phố", "Ho Chi Minh")
-
-    with col4:
-        district_name = st.text_input("Quận / Huyện", "Quan 7")
-
-    with col5:
-        ward_name = st.text_input("Phường / Xã", "Phuong Tan Phu")
-
-    try:
-        price = float(price_text.replace(".", "").replace(",", "").replace(" ", ""))
-    except:
-        price = 0
-
-    st.info(f"💰 Giá trị đơn hàng: **{money(price)}**")
+    st.info(f"💰 Giá trị đơn hàng: **{money(selected_product['price'])}**")
 
     # --------------------------------------------------------
     # AUTO SECURITY CHECK
     # --------------------------------------------------------
     if st.button("🔥 Đặt hàng", type="primary", use_container_width=True):
 
-        if price <= 0:
-            st.error("❌ Giá sản phẩm không hợp lệ.")
-            st.stop()
-
         if not customer_phone:
             st.error("❌ Vui lòng nhập số điện thoại.")
             st.stop()
 
-        # Tạo mã đơn hàng duy nhất
         order_id = generate_order_id()
         st.markdown(f"## 🆔 Order ID: `{order_id}`")
 
-        progress = st.progress(0)
+        # Lấy risk_score và risk_level từ sản phẩm
+        risk_score = selected_product["risk_score"]
+        risk_level = selected_product["risk_level"]
 
-        # Chạy Security Check tự động với giá trị mặc định
-        safe_result = check_safe_browsing("https://example.com")
-        progress.progress(25)
-
-        abuse_result = check_abuse_ip("8.8.8.8")
-        progress.progress(50)
-
-        vt_result = check_virustotal_url("https://example.com")
-        progress.progress(75)
-
-        # RISK ENGINE
-        risk_score, risk_level = calculate_risk(safe_result, abuse_result, vt_result)
         st.metric("RISK SCORE", f"{risk_score}/100")
-        st.progress(risk_score / 100)
 
-        # Đánh giá mức rủi ro
         if risk_level == "HIGH":
             st.error(f"🔴 HIGH RISK — {risk_score}/100")
             status = "BLOCKED"
@@ -1367,20 +1334,13 @@ with tab2:
             "customer_name": customer_name,
             "customer_phone": customer_phone,
             "customer_address": customer_address,
-            "ward_name": ward_name,
-            "district_name": district_name,
-            "province_name": province_name,
-            "product_name": product_name,
-            "amount": price,
-            "weight": 500,
-            "ghn_created": False,
-            "ghn_order_code": None,
+            "product_name": selected_product["name"],
+            "amount": selected_product["price"],
             "risk_score": risk_score,
             "risk_level": risk_level,
             "status": status
         }
 
-        save_pending_order(order_id, order_data)
         st.session_state.orders[order_id] = order_data
         st.success("✅ Đã lưu thông tin đơn hàng.")
 
@@ -1391,7 +1351,7 @@ with tab2:
 
             return_url = "https://" + st.context.headers.get("Host", "")
             try:
-                payment_url = build_vnpay_url(order_id, price, f"Thanh toan don hang {order_id}", return_url)
+                payment_url = build_vnpay_url(order_id, selected_product["price"], f"Thanh toan don hang {order_id}", return_url)
                 st.success("✅ Đã tạo URL thanh toán VNPay.")
                 st.link_button("💳 THANH TOÁN QUA VNPAY", payment_url, use_container_width=True)
             except Exception as e:
