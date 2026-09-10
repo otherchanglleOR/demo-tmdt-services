@@ -809,7 +809,7 @@ def process_vnpay_return_and_ghn():
         # ==============================================
         # THÔNG TIN SHOP
         # ==============================================
-
+{
         "from_name":"E-Commerce Demo",
 
         "from_phone":"0900000000",
