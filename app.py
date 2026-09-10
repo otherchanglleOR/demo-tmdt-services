@@ -853,7 +853,6 @@ def update_pending_order(order_id, updates):
 # ============================================================
 
 def process_vnpay_return_and_ghn():
-
     query_params = dict(st.query_params)
 
     # Không có phản hồi từ VNPay
@@ -861,233 +860,58 @@ def process_vnpay_return_and_ghn():
         return
 
     # Kiểm tra chữ ký
-    is_valid, vnp_data = verify_vnpay_response(
-        query_params
-    )
-
+    is_valid, vnp_data = verify_vnpay_response(query_params)
     if not is_valid:
-
-        st.error(
-            "❌ Chữ ký VNPay không hợp lệ!"
-        )
-
+        st.error("❌ Chữ ký VNPay không hợp lệ!")
         return
 
+    response_code = vnp_data.get("vnp_ResponseCode")
+    order_id = vnp_data.get("vnp_TxnRef")
 
-    response_code = vnp_data.get(
-        "vnp_ResponseCode"
-    )
-
-    order_id = vnp_data.get(
-        "vnp_TxnRef"
-    )
-
-
-    # ========================================================
     # THANH TOÁN THÀNH CÔNG
-    # ========================================================
-
     if response_code == "00":
+        st.success(f"🎉 Thanh toán VNPay thành công cho đơn hàng `{order_id}`!")
 
-        st.success(
-            f"🎉 Thanh toán VNPay thành công "
-            f"cho đơn hàng `{order_id}`!"
-        )
-
-
-        # ====================================================
-        # LẤY ĐƠN HÀNG TỪ FILE
-        # ====================================================
-
-        pending_order = get_pending_order(
-            order_id
-        )
-
-
+        pending_order = get_pending_order(order_id)
         if not pending_order:
-
-            st.error(
-                f"❌ Không tìm thấy thông tin "
-                f"đơn hàng `{order_id}`."
-            )
-
-            st.info(
-                "VNPay đã thanh toán nhưng "
-                "không tìm thấy dữ liệu đơn hàng để tạo GHN."
-            )
-
+            st.error(f"❌ Không tìm thấy thông tin đơn hàng `{order_id}`.")
             return
 
-
-        # ====================================================
-        # TẠO ĐƠN GHN
-        # ====================================================
-
-        if not pending_order.get(
-            "ghn_created",
-            False
-        ):
-
-            with st.spinner(
-                "🚚 Đang tự động tạo đơn GHN..."
-            ):
-
+        # Nếu chưa tạo GHN thì tạo mới
+        if not pending_order.get("ghn_created", False):
+            with st.spinner("🚚 Đang tự động tạo đơn GHN..."):
                 ghn_res = create_ghn_order(
-
                     client_order_code=order_id,
-
-                    customer_name=
-                        pending_order[
-                            "customer_name"
-                        ],
-
-                    customer_phone=
-                        pending_order[
-                            "customer_phone"
-                        ],
-
-                    customer_address=
-                        pending_order[
-                            "customer_address"
-                        ],
-
-                    ward_name=
-                        pending_order[
-                            "ward_name"
-                        ],
-
-                    district_name=
-                        pending_order[
-                            "district_name"
-                        ],
-
-                    province_name=
-                        pending_order[
-                            "province_name"
-                        ],
-
-                    product_name=
-                        pending_order[
-                            "product_name"
-                        ],
-
-                    amount=
-                        pending_order[
-                            "amount"
-                        ],
-
-                    weight=
-                        pending_order.get(
-                            "weight",
-                            500
-                        ),
-
-                    # Đã thanh toán VNPay
+                    customer_name=pending_order["customer_name"],
+                    customer_phone=pending_order["customer_phone"],
+                    customer_address=pending_order["customer_address"],
+                    ward_name=pending_order["ward_name"],
+                    district_name=pending_order["district_name"],
+                    province_name=pending_order["province_name"],
+                    product_name=pending_order["product_name"],
+                    amount=pending_order["amount"],
+                    weight=pending_order.get("weight", 500),
                     is_paid=True
                 )
 
-
-            # ==================================================
-            # GHN THÀNH CÔNG
-            # ==================================================
-
             if ghn_res.get("success"):
-
-                ghn_order_code = (
-                    ghn_res["order_code"]
-                )
-
-
-                # Lưu trạng thái GHN
-                update_pending_order(
-
-                    order_id,
-
-                    {
-                        "ghn_created": True,
-
-                        "ghn_order_code":
-                            ghn_order_code
-                    }
-                )
-
-
-                # Cập nhật orders trong session
-                if order_id in st.session_state.orders:
-
-                    st.session_state.orders[
-                        order_id
-                    ][
-                        "ghn_order_code"
-                    ] = ghn_order_code
-
-                    st.session_state.orders[
-                        order_id
-                    ][
-                        "payment_status"
-                    ] = "Đã thanh toán VNPay"
-
-                    st.session_state.orders[
-                        order_id
-                    ][
-                        "shipping_status"
-                    ] = "Đã tạo đơn GHN"
-
-
-                st.balloons()
-
-
-                st.success(
-                    "🚚 ĐÃ TẠO ĐƠN GHN THÀNH CÔNG!"
-                )
-
-                st.success(
-                    f"📦 Mã vận đơn GHN: "
-                    f"**{ghn_order_code}**"
-                )
-
-
-            # ==================================================
-            # GHN THẤT BẠI
-            # ==================================================
-
+                ghn_order_code = ghn_res["order_code"]
+                update_pending_order(order_id, {"ghn_created": True, "ghn_order_code": ghn_order_code})
+                st.success("🚚 ĐÃ TẠO ĐƠN GHN THÀNH CÔNG!")
+                st.success(f"📦 Mã vận đơn GHN: **{ghn_order_code}**")
             else:
-
-                st.error(
-                    "❌ Thanh toán VNPay thành công "
-                    "nhưng tạo đơn GHN thất bại."
-                )
-
-                st.error(
-                    ghn_res.get(
-                        "message",
-                        "Không xác định được lỗi GHN."
-                    )
-                )
-
-
+                st.error("❌ Thanh toán VNPay thành công nhưng tạo đơn GHN thất bại.")
         else:
+            st.info("🚚 Đơn GHN đã được tạo trước đó.")
+            st.success(f"📦 Mã vận đơn GHN: **{pending_order.get('ghn_order_code')}**")
 
-            st.info(
-                "🚚 Đơn GHN đã được tạo trước đó."
-            )
-
-            st.success(
-                f"📦 Mã vận đơn GHN: "
-                f"**{pending_order.get('ghn_order_code')}**"
-            )
-
-
-    # ========================================================
-    # THANH TOÁN THẤT BẠI
-    # ========================================================
+        # 🔑 Sau khi hiển thị xong, xóa query params để reload không còn thông báo
+        st.experimental_set_query_params()
 
     else:
+        st.warning(f"⚠️ Thanh toán VNPay không thành công. Mã lỗi: {response_code}")
+        st.experimental_set_query_params()
 
-        st.warning(
-            f"⚠️ Thanh toán VNPay không thành công. "
-            f"Mã lỗi: {response_code}"
-        )
 
 
 # ============================================================
