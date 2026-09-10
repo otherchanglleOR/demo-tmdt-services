@@ -855,11 +855,9 @@ def update_pending_order(order_id, updates):
 def process_vnpay_return_and_ghn():
     query_params = dict(st.query_params)
 
-    # Không có phản hồi từ VNPay
     if "vnp_ResponseCode" not in query_params:
         return
 
-    # Kiểm tra chữ ký
     is_valid, vnp_data = verify_vnpay_response(query_params)
     if not is_valid:
         st.error("❌ Chữ ký VNPay không hợp lệ!")
@@ -869,14 +867,12 @@ def process_vnpay_return_and_ghn():
     response_code = vnp_data.get("vnp_ResponseCode")
     order_id = vnp_data.get("vnp_TxnRef")
 
-    # THANH TOÁN THÀNH CÔNG
     if response_code == "00":
         pending_order = get_pending_order(order_id)
 
         if pending_order:
             st.success(f"🎉 Thanh toán VNPay thành công cho đơn hàng `{order_id}`!")
 
-            # Nếu chưa tạo GHN thì tạo mới
             if not pending_order.get("ghn_created", False):
                 with st.spinner("🚚 Đang tự động tạo đơn GHN..."):
                     ghn_res = create_ghn_order(
@@ -908,10 +904,8 @@ def process_vnpay_return_and_ghn():
             st.error(f"❌ Không tìm thấy thông tin đơn hàng `{order_id}`.")
             st.info("VNPay đã thanh toán nhưng không tìm thấy dữ liệu đơn hàng để tạo GHN.")
 
-        # Sau khi xử lý xong, xóa query params để reload không còn thông báo
         st.query_params.clear()
 
-    # THANH TOÁN THẤT BẠI
     else:
         st.warning(f"⚠️ Thanh toán VNPay không thành công. Mã lỗi: {response_code}")
         st.query_params.clear()
