@@ -540,25 +540,19 @@ def calculate_risk(
 # 11. VNPAY
 # ============================================================
 
-from datetime import datetime
+import urllib.parse
+import hmac
+import hashlib
+from datetime import datetime, timedelta
 import pytz
 
-# Lấy thời gian chuẩn Việt Nam (GMT+7)
-tz = pytz.timezone('Asia/Ho_Chi_Minh')
-now = datetime.now(tz)
-
-vnp_CreateDate = now.strftime('%Y%m%d%H%M%S')
-# vnp_ExpireDate nên cộng thêm 15 phút
-vnp_ExpireDate = (now + timedelta(minutes=15)).strftime('%Y%m%d%H%M%S')
 def sort_dict(data):
-
     return dict(
         sorted(
             data.items(),
             key=lambda x: x[0]
         )
     )
-
 
 def build_vnpay_url(
     order_id,
@@ -567,38 +561,27 @@ def build_vnpay_url(
     return_url,
     client_ip="127.0.0.1"
 ):
-
     if not VNP_TMN_CODE:
-        raise Exception(
-            "Thiếu VNP_TMN_CODE"
-        )
+        raise Exception("Thiếu VNP_TMN_CODE")
 
     if not VNP_HASH_SECRET:
-        raise Exception(
-            "Thiếu VNP_HASH_SECRET"
-        )
+        raise Exception("Thiếu VNP_HASH_SECRET")
 
-    now = datetime.now()
+    # 1. Lấy thời gian chuẩn Việt Nam (GMT+7)
+    tz = pytz.timezone('Asia/Ho_Chi_Minh')
+    now = datetime.now(tz)
 
-    create_date = now.strftime(
-        "%Y%m%d%H%M%S"
-    )
+    create_date = now.strftime("%Y%m%d%H%M%S")
+    expire_date = (now + timedelta(minutes=15)).strftime("%Y%m%d%H%M%S")
 
-    expire_date = (
-        now + timedelta(minutes=15)
-    ).strftime(
-        "%Y%m%d%H%M%S"
-    )
-
+    # 2. Chuẩn bị các tham số VNPay
     params = {
         "vnp_Version": "2.1.0",
         "vnp_Command": "pay",
         "vnp_TmnCode": VNP_TMN_CODE,
-        "vnp_Amount": str(
-            int(amount * 100)
-        ),
+        "vnp_Amount": str(int(amount * 100)),
         "vnp_CurrCode": "VND",
-        "vnp_TxnRef": order_id,
+        "vnp_TxnRef": str(order_id),
         "vnp_OrderInfo": order_info,
         "vnp_OrderType": "other",
         "vnp_Locale": "vn",
@@ -608,26 +591,21 @@ def build_vnpay_url(
         "vnp_ExpireDate": expire_date
     }
 
+    # 3. Sắp xếp danh sách tham số theo alphabet A-Z
     params = sort_dict(params)
 
-    query_string = urllib.parse.urlencode(
-        params,
-        quote_via=urllib.parse.quote
-    )
+    # 4. Tạo chuỗi query string với mã hóa URL chuẩn (%20 thay vì dấu +)
+    query_string = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
 
+    # 5. Tạo chữ ký mã hóa HMAC-SHA512
     secure_hash = hmac.new(
         VNP_HASH_SECRET.encode("utf-8"),
         query_string.encode("utf-8"),
         hashlib.sha512
     ).hexdigest()
 
-    payment_url = (
-        VNP_URL
-        + "?"
-        + query_string
-        + "&vnp_SecureHash="
-        + secure_hash
-    )
+    # 6. Ghép thành URL thanh toán hoàn chỉnh
+    payment_url = f"{VNP_URL}?{query_string}&vnp_SecureHash={secure_hash}"
 
     return payment_url
 
