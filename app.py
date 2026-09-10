@@ -540,26 +540,19 @@ def calculate_risk(
 # 11. VNPAY
 # ============================================================
 
-import urllib.parse
-import hmac
 import hashlib
+import hmac
+import urllib.parse
 from datetime import datetime, timedelta
 import pytz
 
+
 def sort_dict(data):
-    return dict(
-        sorted(
-            data.items(),
-            key=lambda x: x[0]
-        )
-    )
+    return dict(sorted(data.items(), key=lambda x: x[0]))
+
 
 def build_vnpay_url(
-    order_id,
-    amount,
-    order_info,
-    return_url,
-    client_ip="127.0.0.1"
+    order_id, amount, order_info, return_url, client_ip="127.0.0.1"
 ):
     if not VNP_TMN_CODE:
         raise Exception("Thiếu VNP_TMN_CODE")
@@ -568,7 +561,7 @@ def build_vnpay_url(
         raise Exception("Thiếu VNP_HASH_SECRET")
 
     # 1. Lấy thời gian chuẩn Việt Nam (GMT+7)
-    tz = pytz.timezone('Asia/Ho_Chi_Minh')
+    tz = pytz.timezone("Asia/Ho_Chi_Minh")
     now = datetime.now(tz)
 
     create_date = now.strftime("%Y%m%d%H%M%S")
@@ -588,20 +581,22 @@ def build_vnpay_url(
         "vnp_ReturnUrl": return_url,
         "vnp_IpAddr": client_ip,
         "vnp_CreateDate": create_date,
-        "vnp_ExpireDate": expire_date
+        "vnp_ExpireDate": expire_date,
     }
 
     # 3. Sắp xếp danh sách tham số theo alphabet A-Z
     params = sort_dict(params)
 
-    # 4. Tạo chuỗi query string với mã hóa URL chuẩn (%20 thay vì dấu +)
-    query_string = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
+    # 4. Tạo chuỗi query string (Sử dụng quote_plus chuẩn VNPay)
+    query_string = urllib.parse.urlencode(
+        params, quote_via=urllib.parse.quote_plus
+    )
 
     # 5. Tạo chữ ký mã hóa HMAC-SHA512
     secure_hash = hmac.new(
         VNP_HASH_SECRET.encode("utf-8"),
         query_string.encode("utf-8"),
-        hashlib.sha512
+        hashlib.sha512,
     ).hexdigest()
 
     # 6. Ghép thành URL thanh toán hoàn chỉnh
@@ -611,48 +606,54 @@ def build_vnpay_url(
 
 
 # ============================================================
-# 12. VNPAY VERIFY RETURN
+# 12. VNPAY VERIFY RETURN (ĐÃ SỬA LỖI)
 # ============================================================
 
+
 def verify_vnpay_response(query_params):
+    # Chuyển đổi query_params về dict tiêu chuẩn
+    if hasattr(query_params, "to_dict"):
+        query_params = query_params.to_dict()
+    else:
+        query_params = dict(query_params)
 
     data = {}
 
     for key, value in query_params.items():
-
         if key.startswith("vnp_"):
-            data[key] = value
+            # LỖI THƯỜNG GẶP: Nếu value là list (Streamlit/Flask), lấy phần tử đầu tiên
+            if isinstance(value, list):
+                value = value[0] if len(value) > 0 else ""
 
-    received_hash = data.pop(
-        "vnp_SecureHash",
-        ""
-    )
+            # Chỉ giữ các tham số có giá trị
+            if value is not None and str(value) != "":
+                data[key] = str(value)
 
-    data.pop(
-        "vnp_SecureHashType",
-        None
-    )
+    # Tách các hash ra khỏi dict dữ liệu
+    received_hash = data.pop("vnp_SecureHash", "")
+    data.pop("vnp_SecureHashType", None)
 
+    # Sắp xếp theo alphabet
     data = sort_dict(data)
 
+    # Tạo query string mã hóa khớp với VNPay
     query_string = urllib.parse.urlencode(
-        data,
-        quote_via=urllib.parse.quote
+        data, quote_via=urllib.parse.quote_plus
     )
 
+    # Tính lại chữ ký
     calculated_hash = hmac.new(
         VNP_HASH_SECRET.encode("utf-8"),
         query_string.encode("utf-8"),
-        hashlib.sha512
+        hashlib.sha512,
     ).hexdigest()
 
+    # So sánh không phân biệt hoa thường
     valid = hmac.compare_digest(
-        calculated_hash.lower(),
-        received_hash.lower()
+        calculated_hash.lower(), str(received_hash).lower()
     )
 
     return valid, data
-
 
 # ============================================================
 # 13. GHN CREATE ORDER
