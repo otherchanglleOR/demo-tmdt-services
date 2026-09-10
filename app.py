@@ -32,7 +32,7 @@ with tab1:
             try:
                 client = genai.Client(api_key=GEMINI_API_KEY)
                 response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-1.5-flash',
                     contents=f"Bạn là AI tư vấn bán hàng TMĐT. Hãy trả lời ngắn gọn, thân thiện: {user_query}"
                 )
                 st.info(f"**Phản hồi từ Gemini API:**\n\n{response.text}")
