@@ -1336,25 +1336,21 @@ with tab2:
 with tab3:
     st.subheader("📋 Lịch sử đơn hàng")
 
-    # Đọc query params để biết có thanh toán hay không
+    # Đọc query params
     query_params = st.query_params
-    order_id = query_params.get("order_id", [None])[0]
-    status = query_params.get("status", [None])[0]
+    order_id = query_params.get("order_id", None)
+    status = query_params.get("status", None)
 
     if order_id and status == "paid":
+        # Chỉ hiển thị thông báo khi có thanh toán thành công
         if order_id in st.session_state.orders:
             st.session_state.orders[order_id]["status"] = "PAID"
-            st.success(f"💳 Thanh toán VNPay thành công cho đơn {order_id}")
-
-    if not st.session_state.orders:
-        st.info("Chưa có đơn hàng nào.")
+            st.success(f"🎉 Thanh toán VNPay thành công cho đơn hàng {order_id}!")
+            if st.session_state.orders[order_id].get("ghn_order_code"):
+                st.info("🚚 Đơn GHN đã được tạo trước đó.")
+                st.success(f"📦 Mã vận đơn GHN: {st.session_state.orders[order_id]['ghn_order_code']}")
     else:
-        for oid, order in st.session_state.orders.items():
-            with st.expander(f"🆔 Đơn hàng {oid}"):
-                st.write(f"📅 Ngày tạo: {order.get('created_at', 'N/A')}")
-                st.write(f"👤 Khách hàng: {order.get('customer_name', 'N/A')}")
-                st.write(f"📞 SĐT: {order.get('customer_phone', 'N/A')}")
-                st.write(f"📦 Sản phẩm: {order.get('product_name', 'N/A')}")
-                st.write(f"💰 Giá trị: {money(order.get('amount', 0))}")
-                st.write(f"📊 Risk Score: {order.get('risk_score', 0)} ({order.get('risk_level', 'N/A')})")
-                st.write(f"📌 Trạng thái: {order.get('status', 'N/A')}")
+        # Nếu reload mà không có thanh toán thì reset session và KHÔNG hiển thị thông báo
+        st.session_state.orders.clear()
+        st.info("Chưa có đơn hàng nào.")
+
