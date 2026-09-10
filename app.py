@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from google import genai
 
 
-]
+
 # ============================================================
 # 1. PAGE CONFIG
 # ============================================================
