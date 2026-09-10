@@ -1088,11 +1088,17 @@ def process_vnpay_return_and_ghn():
             f"⚠️ Thanh toán VNPay không thành công. "
             f"Mã lỗi: {response_code}"
         )
-  # ============================================================
+
+
+# ============================================================
 # GỌI XỬ LÝ VNPAY RETURN → GHN
 # ============================================================
 
-process_vnpay_return_and_ghn()   
+if "vnp_ResponseCode" in st.query_params:
+    process_vnpay_return_and_ghn()
+else:
+    # Nếu reload mà không có phản hồi VNPay thì reset
+    st.session_state.orders.clear()
 
 
 
