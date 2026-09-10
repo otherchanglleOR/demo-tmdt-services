@@ -1085,7 +1085,9 @@ with tab1:
         {"name": "Trang sức vàng", "price": 30000000, "risk_score": 80, "risk_level": "HIGH"}
     ]
     
-   with tab2:
+       
+
+with tab2:
     st.subheader("🚀 Đặt hàng & Security")
 
     # Nhập thông tin khách hàng
