@@ -34,7 +34,7 @@ with tab1:
                     client = genai.Client(api_key=GEMINI_API_KEY)
                     # Dùng gemini-2.5-flash-lite theo đúng bảng Quota trong tài khoản của bạn
                     response = client.models.generate_content(
-                        model='gemini-2.5-flash-lite',
+                        model='gemini-3.5-flash-lite',
                         contents=f"Bạn là AI tư vấn bán hàng TMĐT. Trả lời ngắn gọn dưới 3 câu, thân thiện: {user_query}"
                     )
                     st.info(f"**Phản hồi từ Google Gemini AI:**\n\n{response.text}")
