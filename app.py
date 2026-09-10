@@ -806,7 +806,11 @@ def process_vnpay_return_and_ghn():
         else:
             st.error("Chữ ký VNPay không hợp lệ!")
 
-     
+  # ============================================================
+# GỌI XỬ LÝ VNPAY RETURN → GHN
+# ============================================================
+
+process_vnpay_return_and_ghn()   
 
 
 
@@ -1389,68 +1393,114 @@ with tab2:
         }
 
 
-        # ====================================================
-        # PAYMENT
-        # ====================================================
+      ```python
+# ====================================================
+# PAYMENT
+# ====================================================
 
-        if status in [
-            "APPROVED",
-            "OTP_VERIFIED"
-        ]:
+if status in [
+    "APPROVED",
+    "OTP_VERIFIED"
+]:
 
-            st.divider()
+    st.divider()
 
-            st.markdown(
-                "### 💳 4. VNPay Sandbox"
-            )
+    st.markdown(
+        "### 💳 4. VNPay Sandbox"
+    )
 
-            # Streamlit URL hiện tại
-            return_url = (
-                "https://"
-                + st.context.headers.get(
-                    "Host",
-                    ""
-                )
-            )
+    # ====================================================
+    # LƯU THÔNG TIN ĐƠN HÀNG TRƯỚC KHI SANG VNPAY
+    # ====================================================
 
-            if return_url.endswith(".streamlit.app"):
+    st.session_state[
+        f"pending_order_{order_id}"
+    ] = {
 
-                return_url = (
-                    "https://"
-                    + st.context.headers.get(
-                        "Host"
-                    )
-                )
+        "customer_name":
+            customer_name,
 
-            try:
+        "customer_phone":
+            customer_phone,
 
-                payment_url = build_vnpay_url(
-                    order_id,
-                    price,
-                    f"Thanh toan don hang {order_id}",
-                    return_url
-                )
+        "customer_address":
+            customer_address,
 
-                st.success(
-                    "✅ Đã tạo URL thanh toán VNPay."
-                )
+        "ward_name":
+            ward_name,
 
-                st.link_button(
-                    "💳 THANH TOÁN QUA VNPAY",
-                    payment_url,
-                    use_container_width=True
-                )
+        "district_name":
+            district_name,
 
-                st.info(
-                    "Sau khi thanh toán, VNPay sẽ "
-                    "redirect về Return URL."
-                )
+        "province_name":
+            province_name,
 
-            except Exception as e:
+        "product_name":
+            product_name,
 
-                st.error(
-                    f"❌ Không tạo được VNPay URL: {e}"
-                )
+        "amount":
+            price,
+
+        # Khối lượng hàng, đơn vị gram
+        "weight":
+            500,
+
+        # Trạng thái GHN
+        "ghn_created":
+            False,
+
+        "ghn_order_code":
+            None
+    }
+
+    # ====================================================
+    # STREAMLIT RETURN URL
+    # ====================================================
+
+    return_url = (
+        "https://"
+        + st.context.headers.get(
+            "Host",
+            ""
+        )
+    )
+
+    # ====================================================
+    # TẠO URL THANH TOÁN VNPAY
+    # ====================================================
+
+    try:
+
+        payment_url = build_vnpay_url(
+            order_id,
+            price,
+            f"Thanh toan don hang {order_id}",
+            return_url
+        )
+
+        st.success(
+            "✅ Đã tạo URL thanh toán VNPay."
+        )
+
+        st.link_button(
+            "💳 THANH TOÁN QUA VNPAY",
+            payment_url,
+            use_container_width=True
+        )
+
+        st.info(
+            "Sau khi thanh toán thành công, "
+            "VNPay sẽ redirect về website và "
+            "hệ thống tự động tạo đơn GHN."
+        )
+
+    except Exception as e:
+
+        st.error(
+            f"❌ Không tạo được VNPay URL: {e}"
+        )
+
+
 
 
 # ============================================================
