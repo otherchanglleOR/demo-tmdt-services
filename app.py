@@ -668,7 +668,7 @@ def create_ghn_order(
     if not GHN_SHOP_ID:
         return {"success": False, "message": "Thiếu GHN_SHOP_ID"}
 
-    endpoint = "https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/create"
+    endpoint = "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/create"
 
     headers = {
         "Content-Type": "application/json",
