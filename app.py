@@ -4,15 +4,15 @@ import time
 import os
 from google import genai
 
-# Lấy Gemini API Key từ cấu hình hệ thống
+# Lấy Gemini API Key từ cấu hình Secrets
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 st.set_page_config(page_title="Demo Internet Services - Sàn TMĐT", layout="wide")
 st.title("🛒 DEMO TÍCH HỢP 5 INTERNET SERVICES CHO SÀN TMĐT")
 
-# Thanh bên hông (Sidebar) hiển thị danh sách 5 Services
+# Thanh bên hông (Sidebar)
 st.sidebar.header("🔌 TRẠNG THÁI KẾT NỐI SERVICES")
-st.sidebar.success("1. AI Service: Google Gemini API (Active)")
+st.sidebar.success("1. AI Service: Google Gemini API (Flash-8B Ultra-Light)")
 st.sidebar.success("2. Security WAF: Cloudflare (Proxy)")
 st.sidebar.success("3. Security Fraud: vKey / Device Check (Active)")
 st.sidebar.success("4. Payment Service: VNPay Gateway (Sandbox)")
@@ -21,25 +21,27 @@ st.sidebar.success("5. Shipping/Notify: GHN API & Zalo ZNS (Sandbox)")
 tab1, tab2 = st.tabs(["🤖 1. AI Tư Vấn Khách Hàng", "📦 2. Workflow Tự Động Hóa Đặt Hàng"])
 
 # ---------------------------------------------------------
-# TAB 1: AI SERVICE (TƯ VẤN KHÁCH HÀNG)
+# TAB 1: AI SERVICE (GOOGLE GEMINI 1.5 FLASH 8B - SIÊU TIẾT KIỆM)
 # ---------------------------------------------------------
 with tab1:
-    st.subheader("Trải nghiệm AI Service tư vấn bán hàng")
+    st.subheader("Trải nghiệm AI Service tư vấn bán hàng (Google Gemini 1.5 Flash-8B)")
     user_query = st.text_input("Nhập câu hỏi của khách hàng:", "Tư vấn cho tôi tai nghe bluetooth giá dưới 1 triệu")
     
     if st.button("Gửi cho AI Tư Vấn"):
         if GEMINI_API_KEY:
-            try:
-                client = genai.Client(api_key=GEMINI_API_KEY)
-                response = client.models.generate_content(
-                    model='gemini-1.5-flash',
-                    contents=f"Bạn là AI tư vấn bán hàng TMĐT. Hãy trả lời ngắn gọn, thân thiện: {user_query}"
-                )
-                st.info(f"**Phản hồi từ Gemini API:**\n\n{response.text}")
-            except Exception as e:
-                st.error(f"Lỗi gọi AI API: {e}")
+            with st.spinner("Google AI đang xử lý..."):
+                try:
+                    client = genai.Client(api_key=GEMINI_API_KEY)
+                    # Sử dụng gemini-1.5-flash-8b giúp tối ưu hóa quota hạn ngạch tối đa
+                    response = client.models.generate_content(
+                        model='gemini-1.5-flash-8b',
+                        contents=f"Bạn là AI tư vấn bán hàng TMĐT. Trả lời ngắn gọn dưới 3 câu, thân thiện: {user_query}"
+                    )
+                    st.info(f"**Phản hồi từ Google Gemini AI:**\n\n{response.text}")
+                except Exception as e:
+                    st.error(f"Lỗi gọi AI API: {e}")
         else:
-            st.warning("⚠️ Chưa cấu hình GEMINI_API_KEY trong hệ thống!")
+            st.warning("⚠️ Chưa cấu hình GEMINI_API_KEY trong Secrets của Streamlit Cloud!")
 
 # ---------------------------------------------------------
 # TAB 2: WORKFLOW TỰ ĐỘNG HÓA
@@ -63,8 +65,7 @@ with tab2:
             # 1. SECURITY CHECK
             st.write("🔍 **Bước 1: Gọi Security API (Cloudflare / vKey Check Risk Score)...**")
             time.sleep(1)
-            risk_score = 10 # Giả lập điểm rủi ro
-            st.success(f"✅ Security Passed! (IP Check: OK | Device Risk Score: {risk_score}/100 - An toàn)")
+            st.success("✅ Security Passed! (IP Check: OK | Device Risk Score: 10/100 - An toàn)")
 
             # 2. PAYMENT API
             st.write("🔍 **Bước 2: Gọi Payment API (VNPay Gateway)...**")
