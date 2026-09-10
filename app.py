@@ -1395,111 +1395,108 @@ with tab2:
 
       
 # ====================================================
-# PAYMENT
-# ====================================================
+        # PAYMENT
+        # ====================================================
 
-if status in [
-    "APPROVED",
-    "OTP_VERIFIED"
-]:
+        if status in [
+            "APPROVED",
+            "OTP_VERIFIED"
+        ]:
 
-    st.divider()
+            st.divider()
 
-    st.markdown(
-        "### 💳 4. VNPay Sandbox"
-    )
+            st.markdown(
+                "### 💳 4. VNPay Sandbox"
+            )
 
-    # ====================================================
-    # LƯU THÔNG TIN ĐƠN HÀNG TRƯỚC KHI SANG VNPAY
-    # ====================================================
+            # ====================================================
+            # LƯU THÔNG TIN ĐƠN HÀNG TRƯỚC KHI SANG VNPAY
+            # ====================================================
 
-    st.session_state[
-        f"pending_order_{order_id}"
-    ] = {
+            st.session_state[
+                f"pending_order_{order_id}"
+            ] = {
 
-        "customer_name":
-            customer_name,
+                "customer_name":
+                    customer_name,
 
-        "customer_phone":
-            customer_phone,
+                "customer_phone":
+                    customer_phone,
 
-        "customer_address":
-            customer_address,
+                "customer_address":
+                    customer_address,
 
-        "ward_name":
-            ward_name,
+                "ward_name":
+                    ward_name,
 
-        "district_name":
-            district_name,
+                "district_name":
+                    district_name,
 
-        "province_name":
-            province_name,
+                "province_name":
+                    province_name,
 
-        "product_name":
-            product_name,
+                "product_name":
+                    product_name,
 
-        "amount":
-            price,
+                "amount":
+                    price,
 
-        # Khối lượng hàng, đơn vị gram
-        "weight":
-            500,
+                "weight":
+                    500,
 
-        # Trạng thái GHN
-        "ghn_created":
-            False,
+                "ghn_created":
+                    False,
 
-        "ghn_order_code":
-            None
-    }
+                "ghn_order_code":
+                    None
+            }
 
-    # ====================================================
-    # STREAMLIT RETURN URL
-    # ====================================================
+            # ====================================================
+            # STREAMLIT RETURN URL
+            # ====================================================
 
-    return_url = (
-        "https://"
-        + st.context.headers.get(
-            "Host",
-            ""
-        )
-    )
+            return_url = (
+                "https://"
+                + st.context.headers.get(
+                    "Host",
+                    ""
+                )
+            )
 
-    # ====================================================
-    # TẠO URL THANH TOÁN VNPAY
-    # ====================================================
+            # ====================================================
+            # TẠO URL THANH TOÁN VNPAY
+            # ====================================================
 
-    try:
+            try:
 
-        payment_url = build_vnpay_url(
-            order_id,
-            price,
-            f"Thanh toan don hang {order_id}",
-            return_url
-        )
+                payment_url = build_vnpay_url(
+                    order_id,
+                    price,
+                    f"Thanh toan don hang {order_id}",
+                    return_url
+                )
 
-        st.success(
-            "✅ Đã tạo URL thanh toán VNPay."
-        )
+                st.success(
+                    "✅ Đã tạo URL thanh toán VNPay."
+                )
 
-        st.link_button(
-            "💳 THANH TOÁN QUA VNPAY",
-            payment_url,
-            use_container_width=True
-        )
+                st.link_button(
+                    "💳 THANH TOÁN QUA VNPAY",
+                    payment_url,
+                    use_container_width=True
+                )
 
-        st.info(
-            "Sau khi thanh toán thành công, "
-            "VNPay sẽ redirect về website và "
-            "hệ thống tự động tạo đơn GHN."
-        )
+                st.info(
+                    "Sau khi thanh toán thành công, "
+                    "VNPay sẽ redirect về website và "
+                    "hệ thống tự động tạo đơn GHN."
+                )
 
-    except Exception as e:
+            except Exception as e:
 
-        st.error(
-            f"❌ Không tạo được VNPay URL: {e}"
-        )
-
+                st.error(
+                    f"❌ Không tạo được VNPay URL: {e}"
+                )
 
 
 
