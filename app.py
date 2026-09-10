@@ -3,24 +3,24 @@ import time
 import os
 from google import genai
 
-# Page Config
+# Cấu hình trang Web
 st.set_page_config(
     page_title="E-Commerce Internet Services Demo",
     page_icon="🛍️",
     layout="wide"
 )
 
-# Title & Banner
+# Tiêu đề ứng dụng
 st.title("🛍️ Sàn Thương Mại Điện Tử - Demo Tích Hợp Internet Services")
 st.caption("Đồ án môn học: Hệ thống tích hợp AI Service, Multi-Security Services, Payment & Logistics API")
 
-# Retrieve API Key from Streamlit Secrets
+# Lấy API Key từ Secrets của Streamlit Cloud
 GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY", "")
 
-# Tabs Navigation according to Architecture Diagram
+# Khởi tạo các Tab theo đúng Sơ đồ Kiến trúc
 tab1, tab2, tab3 = st.tabs([
     "1. AI Service (Gemini)", 
-    "2. Security Services (Google, AbuseIPDB, VirusTotal)", 
+    "2. Security Services (Google Safe Browsing, AbuseIPDB, VirusTotal)", 
     "3. Full E-Commerce Workflow"
 ])
 
@@ -50,7 +50,7 @@ with tab1:
             st.warning("⚠️ Chưa cấu hình GEMINI_API_KEY trong Secrets của Streamlit Cloud!")
 
 # ==========================================
-# TAB 2: SECURITY SERVICES (TRIPLE CHECK)
+# TAB 2: SECURITY SERVICES (KHỚP SƠ ĐỒ KIẾN TRÚC)
 # ==========================================
 with tab2:
     st.subheader("🛡️ Security Services: Kiểm Tra An Ninh 3 Lớp")
@@ -83,7 +83,7 @@ with tab2:
                 st.success(f"🛡️ **VirusTotal**: 0/72 Vendors flagged `{test_file}`. Clean!")
 
 # ==========================================
-# TAB 3: FULL WORKFLOW (KHỚP SƠ ĐỒ KIẾN TRÚC)
+# TAB 3: FULL WORKFLOW (LUỒNG ĐẶT HÀNG TỰ ĐỘNG)
 # ==========================================
 with tab3:
     st.subheader("🚀 Luồng Xử Lý Đặt Hàng Tự Động (API Gateway Integration)")
@@ -101,7 +101,7 @@ with tab3:
         st.divider()
         st.markdown("### 🔄 API Gateway đang điều phối các Services:")
         
-        # Step 1: Security Services (Triple Check)
+        # Bước 1: Security Services (Triple Check)
         with st.status("1. Security Services đang kiểm tra an toàn...", expanded=True) as status1:
             time.sleep(0.8)
             st.write("🟢 **Google Safe Browsing**: URL checkout hợp lệ.")
@@ -111,14 +111,14 @@ with tab3:
             st.write("🟢 **VirusTotal**: Không phát hiện hành vi bất thường/mã độc.")
             status1.update(label="✅ Security Services: Đã vượt qua 3 lớp kiểm tra an ninh!", state="complete", expanded=False)
             
-        # Step 2: Payment Service (VNPay)
+        # Bước 2: Payment Service (VNPay)
         with st.status("2. Payment Service (VNPay) đang xử lý...", expanded=True) as status2:
             time.sleep(1)
             st.write("💳 Đã kết nối Cổng thanh toán VNPay Sandbox...")
             st.write("🎟️ Mã giao dịch: `VNP13984920` - Trạng thái: **Thanh toán thành công (00)**.")
             status2.update(label="✅ Payment Service: VNPay xác nhận thanh toán 850.000 VNĐ thành công!", state="complete", expanded=False)
             
-        # Step 3: Shipping Service (GHN)
+        # Bước 3: Shipping Service (GHN)
         with st.status("3. Shipping Service (GHN) đang tạo vận đơn...", expanded=True) as status3:
             time.sleep(1)
             st.write("📦 Đã kết nối API Giao Hàng Nhanh (GHN Sandbox)...")
