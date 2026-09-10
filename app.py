@@ -810,14 +810,11 @@ def process_vnpay_return_and_ghn():
         # THÔNG TIN SHOP
         # ==============================================
 
-        "from_name":
-            "E-Commerce Demo",
+        "from_name":"E-Commerce Demo",
 
-        "from_phone":
-            "0900000000",
+        "from_phone":"0900000000",
 
-        "from_address":
-            "39 Nguyen Thi Thap",
+        "from_address":"39 Nguyen Thi Thap",
 
         "from_ward_name":
             "Phuong Tan Phu",
