@@ -1144,17 +1144,17 @@ with tab2:
 
         total_score, risk_level_api = calculate_risk(safe_result, abuse_result, vt_result)
 
-        # Ép mức rủi ro cho Laptop gaming
-        if selected_product["name"] == "Laptop gaming":
+        # Map điểm thành mức rủi ro
+        if total_score >= 70:
+            risk_level = "HIGH"
+        elif total_score >= 30:
             risk_level = "MEDIUM"
         else:
-            # Map điểm thành mức rủi ro bình thường
-            if total_score >= 70:
-                risk_level = "HIGH"
-            elif total_score >= 30:
-                risk_level = "MEDIUM"
-            else:
-                risk_level = "LOW"
+            risk_level = "LOW"
+
+        # Ép Laptop gaming luôn là MEDIUM
+        if selected_product["name"] == "Laptop gaming":
+            risk_level = "MEDIUM"
 
         st.warning(f"🔎 Đánh giá rủi ro: {risk_level} (API score: {total_score}/100)")
 
