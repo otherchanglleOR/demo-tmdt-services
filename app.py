@@ -1137,13 +1137,27 @@ with tab2:
             "ghn_created": False
         }
 
-        # 🔎 Chạy đủ các hàm đánh giá rủi ro với IP/URL gắn sẵn
-        safe_result = check_safe_browsing(selected_product["test_url"])
-        abuse_result = check_abuse_ip(selected_product["test_ip"])
-        vt_result = check_virustotal_url(selected_product["test_url"])
+        # Chạy API với IP/URL gắn sẵn
+safe_result = check_safe_browsing(selected_product["test_url"])
+abuse_result = check_abuse_ip(selected_product["test_ip"])
+vt_result = check_virustotal_url(selected_product["test_url"])
 
-        total_score, risk_level = calculate_risk(safe_result, abuse_result, vt_result)
-        st.warning(f"🔎 Đánh giá rủi ro: {risk_level} ({total_score}/100)")
+total_score, risk_level_api = calculate_risk(safe_result, abuse_result, vt_result)
+
+# Nếu sản phẩm là Laptop gaming → ép mức rủi ro MEDIUM
+if selected_product["name"] == "Laptop gaming":
+    risk_level = "MEDIUM"
+else:
+    # Map điểm thành mức rủi ro bình thường
+    if total_score >= 70:
+        risk_level = "HIGH"
+    elif total_score >= 30:
+        risk_level = "MEDIUM"
+    else:
+        risk_level = "LOW"
+
+st.warning(f"🔎 Đánh giá rủi ro: {risk_level} (API score: {total_score}/100)")
+
 
         # Logic theo mức rủi ro
         if risk_level == "HIGH":
