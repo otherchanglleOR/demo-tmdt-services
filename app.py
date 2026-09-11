@@ -920,9 +920,10 @@ def process_vnpay_return_and_ghn():
 
 if "vnp_ResponseCode" in st.query_params:
     process_vnpay_return_and_ghn()
-else:
-    # Nếu reload mà không có phản hồi VNPay thì reset
-    st.session_state.orders.clear()
+# ❌ Đừng xoá st.session_state.orders nữa
+# else:
+#     st.session_state.orders.clear()
+
 
 
 
@@ -1101,7 +1102,9 @@ with tab2:
     product_choice = st.selectbox("Chọn sản phẩm", [p["name"] for p in PRODUCTS])
     selected_product = next(p for p in PRODUCTS if p["name"] == product_choice)
 
+    # Hiển thị giá và mức rủi ro
     st.info(f"💰 Giá trị đơn hàng: **{money(selected_product['price'])}**")
+    st.warning(f"🔎 Mức rủi ro: {selected_product.get('risk_level','N/A')}")
 
     # Nút đặt hàng
     if st.button("🔥 Đặt hàng", type="primary", use_container_width=True):
@@ -1116,6 +1119,7 @@ with tab2:
             "customer_address": customer_address,
             "product_name": selected_product["name"],
             "amount": selected_product["price"],
+            "risk_level": selected_product.get("risk_level"),
             "ward_name": "Phường Tân Phú",
             "district_name": "Quận 7",
             "province_name": "Hồ Chí Minh",
@@ -1144,6 +1148,7 @@ with tab2:
 
         except Exception as e:
             st.error(f"❌ Lỗi khi lưu đơn hàng: {str(e)}")
+
 
 # ============================================================
 # TAB 3 - Lịch sử đơn hàng
