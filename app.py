@@ -1103,7 +1103,6 @@ with tab2:
     selected_product = next(p for p in PRODUCTS if p["name"] == product_choice)
 
     st.info(f"💰 Giá trị đơn hàng: **{money(selected_product['price'])}**")
-    st.warning(f"🔎 Mức rủi ro: {selected_product.get('risk_level','N/A')}")
 
     # Nút đặt hàng
     if st.button("🔥 Đặt hàng", type="primary", use_container_width=True):
@@ -1118,22 +1117,27 @@ with tab2:
             "customer_address": customer_address,
             "product_name": selected_product["name"],
             "amount": selected_product["price"],
-            "risk_level": selected_product.get("risk_level"),
             "ward_name": "Phường Tân Phú",
             "district_name": "Quận 7",
             "province_name": "Hồ Chí Minh",
             "ghn_created": False
         }
 
-        # 🔎 Kiểm tra mức rủi ro
-        risk_level = selected_product.get("risk_level")
+        # 🔎 Chạy đủ các hàm đánh giá rủi ro
+        safe_result = check_safe_browsing("https://example.com")
+        abuse_result = check_abuse_ip("127.0.0.1")
+        vt_result = check_virustotal_url("https://example.com")
 
+        total_score, risk_level = calculate_risk(safe_result, abuse_result, vt_result)
+        st.warning(f"🔎 Đánh giá rủi ro: {risk_level} ({total_score}/100)")
+
+        # Logic theo mức rủi ro
         if risk_level == "HIGH":
             st.error("🚫 Đơn hàng có mức rủi ro cao. Hệ thống đã chặn thanh toán.")
         elif risk_level == "MEDIUM":
             otp = st.text_input("Nhập mã OTP để xác nhận", "")
             if st.button("✅ Xác nhận OTP"):
-                if otp == "123456":  # bạn có thể thay bằng logic gửi OTP thực tế
+                if otp == "123456":  # bạn thay bằng logic gửi OTP thực tế
                     st.success("OTP hợp lệ. Tiếp tục sang bước thanh toán.")
                     save_pending_order(order_id, order_data)
                     st.session_state.orders[order_id] = order_data
