@@ -1082,7 +1082,7 @@ with tab1:
     # TAB 2 - Đặt hàng & kiểm soát rủi ro (chọn sản phẩm cố định)
     # ============================================================
     
-    # Gán sẵn IP/URL cho từng sản phẩm để test rủi ro
+ # Gán sẵn IP/URL cho từng sản phẩm để test rủi ro
 PRODUCTS = [
     {
         "name": "Điện thoại thông minh",
@@ -1177,6 +1177,7 @@ with tab2:
                 return_url
             )
             st.link_button("💳 THANH TOÁN QUA VNPAY", payment_url, use_container_width=True)
+
 
 
 
