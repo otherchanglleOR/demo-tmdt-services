@@ -1118,12 +1118,10 @@ with tab2:
 
     st.info(f"💰 Giá trị đơn hàng: **{money(selected_product['price'])}**")
 
-    # Nút đặt hàng
     if st.button("🔥 Đặt hàng", type="primary", use_container_width=True):
         order_id = generate_order_id()
         st.markdown(f"## 🆔 Order ID: `{order_id}`")
 
-        # Chuẩn bị dữ liệu đơn hàng
         order_data = {
             "created_at": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
             "customer_name": customer_name,
@@ -1137,31 +1135,30 @@ with tab2:
             "ghn_created": False
         }
 
-        # Chạy API
-safe_result = check_safe_browsing(selected_product["test_url"])
-abuse_result = check_abuse_ip(selected_product["test_ip"])
-vt_result = check_virustotal_url(selected_product["test_url"])
+        # 🔎 Chạy API
+        safe_result = check_safe_browsing(selected_product["test_url"])
+        abuse_result = check_abuse_ip(selected_product["test_ip"])
+        vt_result = check_virustotal_url(selected_product["test_url"])
 
-total_score, risk_level_api = calculate_risk(safe_result, abuse_result, vt_result)
+        total_score, risk_level_api = calculate_risk(safe_result, abuse_result, vt_result)
 
-# Map điểm thành mức rủi ro
-if total_score >= 70:
-    risk_level = "HIGH"
-elif total_score >= 30:
-    risk_level = "MEDIUM"
-else:
-    risk_level = "LOW"
+        # Map điểm thành mức rủi ro
+        if total_score >= 70:
+            risk_level = "HIGH"
+        elif total_score >= 30:
+            risk_level = "MEDIUM"
+        else:
+            risk_level = "LOW"
 
-# Ép Laptop gaming luôn là MEDIUM và chỉnh điểm hiển thị cho hợp lý
-display_score = total_score
-if selected_product["name"] == "Laptop gaming":
-    risk_level = "MEDIUM"
-    display_score = 45  # gán điểm trung bình giả định
+        # Xử lý riêng cho Laptop gaming
+        display_score = total_score
+        if selected_product["name"] == "Laptop gaming":
+            risk_level = "MEDIUM"
+            display_score = 45  # ép điểm hiển thị thành trung bình
 
-st.warning(f"🔎 Đánh giá rủi ro: {risk_level} (API score: {display_score}/100)")
+        st.warning(f"🔎 Đánh giá rủi ro: {risk_level} (API score: {display_score}/100)")
 
-
-        # Logic theo mức rủi ro
+        # Logic xử lý theo mức rủi ro
         if risk_level == "HIGH":
             st.error("🚫 Đơn hàng có mức rủi ro cao. Hệ thống đã chặn thanh toán.")
         elif risk_level == "MEDIUM":
@@ -1193,6 +1190,7 @@ st.warning(f"🔎 Đánh giá rủi ro: {risk_level} (API score: {display_score}
                 return_url
             )
             st.link_button("💳 THANH TOÁN QUA VNPAY", payment_url, use_container_width=True)
+
 
 
 
