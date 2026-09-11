@@ -1082,13 +1082,27 @@ with tab1:
     # TAB 2 - Đặt hàng & kiểm soát rủi ro (chọn sản phẩm cố định)
     # ============================================================
     
-    PRODUCTS = [
-        {"name": "Điện thoại thông minh", "price": 5000000, "risk_score": 20, "risk_level": "LOW"},
-        {"name": "Laptop gaming", "price": 20000000, "risk_score": 50, "risk_level": "MEDIUM"},
-        {"name": "Trang sức vàng", "price": 30000000, "risk_score": 80, "risk_level": "HIGH"}
-    ]
-    
-       
+    # Gán sẵn IP/URL cho từng sản phẩm để test rủi ro
+PRODUCTS = [
+    {
+        "name": "Điện thoại thông minh",
+        "price": 5000000,
+        "test_url": "https://google.com",        # URL an toàn
+        "test_ip": "8.8.8.8"                     # IP an toàn
+    },
+    {
+        "name": "Laptop gaming",
+        "price": 20000000,
+        "test_url": "http://testphp.vulnweb.com", # URL có cảnh báo
+        "test_ip": "45.33.32.156"                 # IP có nhiều báo cáo
+    },
+    {
+        "name": "Trang sức vàng",
+        "price": 30000000,
+        "test_url": "http://testsafebrowsing.appspot.com/s/malware.html", # URL test malware của Google
+        "test_ip": "185.220.101.1"                # IP thường bị AbuseIPDB đánh giá cao
+    }
+]
 
 with tab2:
     st.subheader("🚀 Đặt hàng & Security")
@@ -1123,10 +1137,10 @@ with tab2:
             "ghn_created": False
         }
 
-        # 🔎 Chạy đủ các hàm đánh giá rủi ro
-        safe_result = check_safe_browsing("https://example.com")
-        abuse_result = check_abuse_ip("127.0.0.1")
-        vt_result = check_virustotal_url("https://example.com")
+        # 🔎 Chạy đủ các hàm đánh giá rủi ro với IP/URL gắn sẵn
+        safe_result = check_safe_browsing(selected_product["test_url"])
+        abuse_result = check_abuse_ip(selected_product["test_ip"])
+        vt_result = check_virustotal_url(selected_product["test_url"])
 
         total_score, risk_level = calculate_risk(safe_result, abuse_result, vt_result)
         st.warning(f"🔎 Đánh giá rủi ro: {risk_level} ({total_score}/100)")
@@ -1137,7 +1151,7 @@ with tab2:
         elif risk_level == "MEDIUM":
             otp = st.text_input("Nhập mã OTP để xác nhận", "")
             if st.button("✅ Xác nhận OTP"):
-                if otp == "123456":  # bạn thay bằng logic gửi OTP thực tế
+                if otp == "123456":  # thay bằng logic gửi OTP thực tế
                     st.success("OTP hợp lệ. Tiếp tục sang bước thanh toán.")
                     save_pending_order(order_id, order_data)
                     st.session_state.orders[order_id] = order_data
