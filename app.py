@@ -1102,7 +1102,6 @@ with tab2:
     product_choice = st.selectbox("Chọn sản phẩm", [p["name"] for p in PRODUCTS])
     selected_product = next(p for p in PRODUCTS if p["name"] == product_choice)
 
-    # Hiển thị giá và mức rủi ro
     st.info(f"💰 Giá trị đơn hàng: **{money(selected_product['price'])}**")
     st.warning(f"🔎 Mức rủi ro: {selected_product.get('risk_level','N/A')}")
 
@@ -1126,16 +1125,32 @@ with tab2:
             "ghn_created": False
         }
 
-        try:
-            # 🔑 Lưu đơn hàng vào file trước khi chuyển sang VNPay
+        # 🔎 Kiểm tra mức rủi ro
+        risk_level = selected_product.get("risk_level")
+
+        if risk_level == "HIGH":
+            st.error("🚫 Đơn hàng có mức rủi ro cao. Hệ thống đã chặn thanh toán.")
+        elif risk_level == "MEDIUM":
+            otp = st.text_input("Nhập mã OTP để xác nhận", "")
+            if st.button("✅ Xác nhận OTP"):
+                if otp == "123456":  # bạn có thể thay bằng logic gửi OTP thực tế
+                    st.success("OTP hợp lệ. Tiếp tục sang bước thanh toán.")
+                    save_pending_order(order_id, order_data)
+                    st.session_state.orders[order_id] = order_data
+                    return_url = f"https://{st.context.headers.get('Host', '')}"
+                    payment_url = build_vnpay_url(
+                        order_id,
+                        selected_product["price"],
+                        f"Thanh toan don hang {order_id}",
+                        return_url
+                    )
+                    st.link_button("💳 THANH TOÁN QUA VNPAY", payment_url, use_container_width=True)
+                else:
+                    st.error("❌ OTP không hợp lệ.")
+        else:  # LOW
             save_pending_order(order_id, order_data)
-
-            # Lưu vào session để hiển thị lịch sử
             st.session_state.orders[order_id] = order_data
-
             st.success("✅ Đã lưu thông tin đơn hàng.")
-
-            # Tạo URL thanh toán VNPay
             return_url = f"https://{st.context.headers.get('Host', '')}"
             payment_url = build_vnpay_url(
                 order_id,
@@ -1143,11 +1158,8 @@ with tab2:
                 f"Thanh toan don hang {order_id}",
                 return_url
             )
-
             st.link_button("💳 THANH TOÁN QUA VNPAY", payment_url, use_container_width=True)
 
-        except Exception as e:
-            st.error(f"❌ Lỗi khi lưu đơn hàng: {str(e)}")
 
 
 # ============================================================
